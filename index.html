@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2563EB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>家電サポート</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #2563EB;
+  --primary-dark: #1D4ED8;
+  --primary-light: #DBEAFE;
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --text: #1F2937;
+  --text-secondary: #6B7280;
+  --border: #E5E7EB;
+  --chat-user: #2563EB;
+  --chat-ai: #F3F4F6;
+  --danger: #EF4444;
+  --success: #10B981;
+  --tab-height: 60px;
+  --header-height: 52px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+  overflow: hidden;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  position: relative;
+}
+
+@media (min-width: 481px) {
+  body { background: #E5E7EB; }
+  #app { box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+}
+
+/* Header */
+header {
+  height: var(--header-height);
+  padding-top: var(--safe-top);
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+header .back-btn {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  padding: 8px;
+  cursor: pointer;
+  display: none;
+  line-height: 1;
+}
+header .back-btn.visible { display: block; }
+header .clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 13px;
+  padding: 8px;
+  cursor: pointer;
+  display: none;
+}
+header .clear-btn.visible { display: block; }
+
+/* Views */
+.view {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+  -webkit-overflow-scrolling: touch;
+}
+.view.active { display: flex; flex-direction: column; }
+
+/* Tab Bar */
+#tab-bar {
+  display: flex;
+  height: var(--tab-height);
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+#tab-bar button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.2s;
+  position: relative;
+}
+#tab-bar button .tab-icon { font-size: 22px; line-height: 1; }
+#tab-bar button.active { color: var(--primary); }
+#tab-bar button .badge {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 18px);
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  display: none;
+}
+#tab-bar button .badge.visible { display: block; }
+
+/* ========= Appliance List View ========= */
+#view-appliances {
+  padding: 16px;
+  gap: 12px;
+}
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.empty-state .icon { font-size: 48px; opacity: 0.5; }
+.empty-state p { font-size: 15px; line-height: 1.6; }
+
+.appliance-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.appliance-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.appliance-card .card-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-light);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.appliance-card .card-info {
+  flex: 1;
+  min-width: 0;
+}
+.appliance-card .card-name {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appliance-card .card-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appliance-card .card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.appliance-card .card-actions button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.2s;
+}
+.appliance-card .card-actions button:hover { background: var(--bg); }
+.appliance-card .card-actions .delete-btn:hover { color: var(--danger); }
+
+/* FAB */
+.fab {
+  position: absolute;
+  bottom: calc(var(--tab-height) + var(--safe-bottom) + 16px);
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+
+/* ========= Chat View ========= */
+#view-chat {
+  display: none;
+}
+#view-chat.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat appliance selector */
+.chat-select {
+  flex: 1;
+  padding: 16px;
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.chat-select-item {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-select-item:active { opacity: 0.8; }
+.chat-select-item .cs-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-light);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-select-item .cs-info { flex: 1; min-width: 0; }
+.chat-select-item .cs-name { font-size: 15px; font-weight: 600; }
+.chat-select-item .cs-model { font-size: 12px; color: var(--text-secondary); }
+.chat-select-item .cs-arrow { color: var(--text-secondary); font-size: 18px; }
+
+/* Chat messages area */
+#chat-area {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+}
+#chat-area.active { display: flex; }
+
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.msg {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+.msg.user {
+  align-self: flex-end;
+  background: var(--chat-user);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.msg .msg-time {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 4px;
+  display: block;
+}
+.msg.user .msg-time { text-align: right; }
+
+.typing-indicator {
+  align-self: flex-start;
+  background: var(--surface);
+  padding: 12px 18px;
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  display: none;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.typing-indicator.visible { display: flex; }
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+  opacity: 0.4;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.4; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* Chat input */
+#chat-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+#chat-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.4;
+  outline: none;
+  background: var(--bg);
+}
+#chat-input:focus { border-color: var(--primary); }
+#chat-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+#chat-send:disabled { opacity: 0.4; cursor: default; }
+
+/* ========= Settings View ========= */
+#view-settings {
+  padding: 16px;
+  gap: 16px;
+}
+.settings-section {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.settings-section h3 {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.setting-row {
+  margin-bottom: 12px;
+}
+.setting-row:last-child { margin-bottom: 0; }
+.setting-row label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.setting-row input,
+.setting-row select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg);
+  outline: none;
+}
+.setting-row input:focus,
+.setting-row select:focus { border-color: var(--primary); }
+.api-key-wrapper {
+  position: relative;
+}
+.api-key-wrapper input { padding-right: 44px; }
+.api-key-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+}
+.settings-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.btn-save {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.btn-save:active { background: var(--primary-dark); }
+.toast {
+  position: fixed;
+  bottom: calc(var(--tab-height) + var(--safe-bottom) + 20px);
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1F2937;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 100;
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ========= Modal ========= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 50;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85dvh;
+  padding: 20px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.modal .form-group {
+  margin-bottom: 14px;
+}
+.modal .form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.modal .form-group input,
+.modal .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg);
+  outline: none;
+}
+.modal .form-group input:focus,
+.modal .form-group select:focus { border-color: var(--primary); }
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+}
+.btn-cancel {
+  background: var(--bg);
+  color: var(--text);
+}
+.btn-submit {
+  background: var(--primary);
+  color: white;
+}
+
+/* Confirm dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 60;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.confirm-overlay.open { display: flex; }
+.confirm-box {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 300px;
+  width: 100%;
+  text-align: center;
+}
+.confirm-box p { font-size: 15px; margin-bottom: 20px; line-height: 1.5; }
+.confirm-box .confirm-actions { display: flex; gap: 10px; }
+.confirm-box .confirm-actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <header>
+    <button class="back-btn" id="back-btn">&#8249;</button>
+    <span id="header-title">家電サポート</span>
+    <button class="clear-btn" id="clear-btn">履歴削除</button>
+  </header>
+
+  <!-- View: Appliance List -->
+  <main id="view-appliances" class="view active">
+    <div id="appliance-list"></div>
+  </main>
+
+  <!-- View: Chat -->
+  <main id="view-chat" class="view">
+    <div id="chat-select" class="chat-select"></div>
+    <div id="chat-area">
+      <div id="chat-messages">
+        <div class="typing-indicator" id="typing">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div id="chat-input-area">
+        <textarea id="chat-input" rows="1" placeholder="症状を入力してください..."></textarea>
+        <button id="chat-send">&#9654;</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- View: Settings -->
+  <main id="view-settings" class="view">
+    <div class="settings-section">
+      <h3>API設定</h3>
+      <div class="setting-row">
+        <label>Claude APIキー</label>
+        <div class="api-key-wrapper">
+          <input type="password" id="api-key-input" placeholder="sk-ant-...">
+          <button class="api-key-toggle" id="api-key-toggle">&#128065;</button>
+        </div>
+        <p class="settings-note">Anthropic のAPIキーを入力してください。キーはこの端末のブラウザ内にのみ保存されます。</p>
+      </div>
+      <div class="setting-row">
+        <label>モデル</label>
+        <select id="model-select">
+          <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-save" id="save-settings">保存</button>
+    <button class="btn-save" id="test-api" style="margin-top:10px;background:#10B981;">接続テスト</button>
+    <p id="test-result" style="text-align:center;margin-top:10px;font-size:14px;"></p>
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab">+</button>
+
+  <!-- Tab Bar -->
+  <nav id="tab-bar">
+    <button class="active" data-view="appliances">
+      <span class="tab-icon">&#127968;</span>
+      <span>家電一覧</span>
+    </button>
+    <button data-view="chat">
+      <span class="tab-icon">&#128172;</span>
+      <span>チャット</span>
+      <span class="badge" id="chat-badge"></span>
+    </button>
+    <button data-view="settings">
+      <span class="tab-icon">&#9881;</span>
+      <span>設定</span>
+      <span class="badge" id="settings-badge"></span>
+    </button>
+  </nav>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-body">
+    <h2 id="modal-title">家電を登録</h2>
+    <div class="form-group">
+      <label>製品名 <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="input-name" placeholder="例: ドラム式洗濯機">
+    </div>
+    <div class="form-group">
+      <label>型番 <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="input-model" placeholder="例: BD-STX120J">
+    </div>
+    <div class="form-group">
+      <label>メーカー</label>
+      <input type="text" id="input-manufacturer" placeholder="例: 日立">
+    </div>
+    <div class="form-group">
+      <label>カテゴリ</label>
+      <select id="input-category">
+        <option value="洗濯機">洗濯機</option>
+        <option value="エアコン">エアコン</option>
+        <option value="冷蔵庫">冷蔵庫</option>
+        <option value="電子レンジ">電子レンジ</option>
+        <option value="食器洗い乾燥機">食器洗い乾燥機</option>
+        <option value="掃除機">掃除機</option>
+        <option value="テレビ">テレビ</option>
+        <option value="炊飯器">炊飯器</option>
+        <option value="給湯器">給湯器</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel">キャンセル</button>
+      <button class="btn-submit" id="modal-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <p id="confirm-message"></p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="confirm-cancel">キャンセル</button>
+      <button class="btn-submit" id="confirm-ok">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ State ============
+let appliances = JSON.parse(localStorage.getItem('appliances') || '[]');
+let settings = JSON.parse(localStorage.getItem('settings') || '{}');
+let currentView = 'appliances';
+let editingId = null;
+let chatApplianceId = null;
+let chatMessages = [];
+let isStreaming = false;
+
+// ============ Category Icons ============
+const categoryIcons = {
+  '洗濯機': '👕', 'エアコン': '❄️', '冷蔵庫': '🧊', '電子レンジ': '🔥',
+  '食器洗い乾燥機': '🍽️', '掃除機': '🧹', 'テレビ': '📺', '炊飯器': '🍚',
+  '給湯器': '♨️', 'その他': '🔌'
+};
+
+// ============ Init ============
+function init() {
+  renderAppliances();
+  loadSettings();
+  updateBadges();
+  autoGrowTextarea();
+  handleKeyboard();
+  bindEvents();
+}
+
+function bindEvents() {
+  // Tab bar (event delegation to handle clicks on child spans)
+  document.getElementById('tab-bar').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-view]');
+    if (btn) switchView(btn.dataset.view);
+  });
+  // FAB
+  document.getElementById('fab').addEventListener('click', () => openModal());
+  // Header buttons
+  document.getElementById('back-btn').addEventListener('click', handleBack);
+  document.getElementById('clear-btn').addEventListener('click', clearChat);
+  // Chat send
+  document.getElementById('chat-send').addEventListener('click', sendMessage);
+  // Settings
+  document.getElementById('api-key-toggle').addEventListener('click', toggleApiKeyVisibility);
+  document.getElementById('save-settings').addEventListener('click', saveSettings);
+  // Modal
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-save').addEventListener('click', saveAppliance);
+  // Confirm dialog
+  document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+  // API test
+  document.getElementById('test-api').addEventListener('click', testApiKey);
+}
+
+// ============ View Switching ============
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${view}`).classList.add('active');
+  document.querySelectorAll('#tab-bar button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  const fab = document.getElementById('fab');
+  const backBtn = document.getElementById('back-btn');
+  const clearBtn = document.getElementById('clear-btn');
+
+  fab.style.display = view === 'appliances' ? 'flex' : 'none';
+  backBtn.classList.remove('visible');
+  clearBtn.classList.remove('visible');
+
+  if (view === 'appliances') {
+    document.getElementById('header-title').textContent = '家電サポート';
+    chatApplianceId = null;
+  } else if (view === 'chat') {
+    if (chatApplianceId) {
+      showChatForAppliance(chatApplianceId);
+    } else {
+      document.getElementById('header-title').textContent = 'チャット';
+      document.getElementById('chat-area').classList.remove('active');
+      document.getElementById('chat-select').style.display = 'flex';
+      renderChatSelect();
+    }
+  } else if (view === 'settings') {
+    document.getElementById('header-title').textContent = '設定';
+  }
+}
+
+// ============ Appliance CRUD ============
+function renderAppliances() {
+  const container = document.getElementById('appliance-list');
+  if (appliances.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🏠</div>
+        <p>家電が登録されていません。<br>下の「+」ボタンから登録しましょう。</p>
+      </div>`;
+    return;
+  }
+  appliances.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'appliance-card';
+    card.innerHTML = `
+      <div class="card-icon">${categoryIcons[a.category] || '🔌'}</div>
+      <div class="card-info">
+        <div class="card-name">${esc(a.name)}</div>
+        <div class="card-detail">${esc(a.manufacturer || '')} ${esc(a.modelNumber)}</div>
+      </div>
+      <div class="card-actions">
+        <button class="edit-btn" title="編集">&#9998;</button>
+        <button class="delete-btn" title="削除">&#128465;</button>
+      </div>`;
+    card.addEventListener('click', () => startChat(a.id));
+    card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); editAppliance(a.id); });
+    card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); confirmDelete(a.id); });
+    container.appendChild(card);
+  });
+}
+
+function openModal(id) {
+  editingId = id || null;
+  const overlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-title').textContent = id ? '家電を編集' : '家電を登録';
+
+  if (id) {
+    const a = appliances.find(x => x.id === id);
+    document.getElementById('input-name').value = a.name;
+    document.getElementById('input-model').value = a.modelNumber;
+    document.getElementById('input-manufacturer').value = a.manufacturer || '';
+    document.getElementById('input-category').value = a.category;
+  } else {
+    document.getElementById('input-name').value = '';
+    document.getElementById('input-model').value = '';
+    document.getElementById('input-manufacturer').value = '';
+    document.getElementById('input-category').value = '洗濯機';
+  }
+  overlay.classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+function saveAppliance() {
+  const name = document.getElementById('input-name').value.trim();
+  const modelNumber = document.getElementById('input-model').value.trim();
+  const manufacturer = document.getElementById('input-manufacturer').value.trim();
+  const category = document.getElementById('input-category').value;
+
+  if (!name || !modelNumber) {
+    showToast('製品名と型番は必須です');
+    return;
+  }
+
+  if (editingId) {
+    const idx = appliances.findIndex(a => a.id === editingId);
+    if (idx !== -1) {
+      appliances[idx] = { ...appliances[idx], name, modelNumber, manufacturer, category };
+    }
+  } else {
+    appliances.push({
+      id: crypto.randomUUID(),
+      name, modelNumber, manufacturer, category,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  localStorage.setItem('appliances', JSON.stringify(appliances));
+  renderAppliances();
+  closeModal();
+  showToast(editingId ? '更新しました' : '登録しました');
+  updateBadges();
+}
+
+function editAppliance(id) {
+  openModal(id);
+}
+
+function confirmDelete(id) {
+  const a = appliances.find(x => x.id === id);
+  document.getElementById('confirm-message').textContent = `「${a.name}」を削除しますか？チャット履歴も削除されます。`;
+  const okBtn = document.getElementById('confirm-ok');
+  okBtn.onclick = () => { deleteAppliance(id); closeConfirm(); };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+}
+
+function deleteAppliance(id) {
+  appliances = appliances.filter(a => a.id !== id);
+  localStorage.setItem('appliances', JSON.stringify(appliances));
+  localStorage.removeItem(`chat_${id}`);
+  renderAppliances();
+  updateBadges();
+  showToast('削除しました');
+  if (chatApplianceId === id) {
+    chatApplianceId = null;
+  }
+}
+
+// ============ Chat ============
+function renderChatSelect() {
+  const container = document.getElementById('chat-select');
+  if (appliances.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">💬</div>
+        <p>まず「家電一覧」タブから<br>家電を登録してください。</p>
+      </div>`;
+    return;
+  }
+  container.innerHTML = '<p style="color:var(--text-secondary);font-size:13px;margin-bottom:4px;">相談する家電を選択してください</p>';
+  appliances.forEach(a => {
+    const item = document.createElement('div');
+    item.className = 'chat-select-item';
+    item.innerHTML = `
+      <div class="cs-icon">${categoryIcons[a.category] || '🔌'}</div>
+      <div class="cs-info">
+        <div class="cs-name">${esc(a.name)}</div>
+        <div class="cs-model">${esc(a.manufacturer || '')} ${esc(a.modelNumber)}</div>
+      </div>
+      <div class="cs-arrow">&#8250;</div>`;
+    item.addEventListener('click', () => showChatForAppliance(a.id));
+    container.appendChild(item);
+  });
+}
+
+function startChat(id) {
+  chatApplianceId = id;
+  switchView('chat');
+}
+
+function showChatForAppliance(id) {
+  chatApplianceId = id;
+  const appliance = appliances.find(a => a.id === id);
+  if (!appliance) return;
+
+  document.getElementById('header-title').textContent = appliance.name;
+  document.getElementById('back-btn').classList.add('visible');
+  document.getElementById('clear-btn').classList.add('visible');
+  document.getElementById('chat-select').style.display = 'none';
+  document.getElementById('chat-area').classList.add('active');
+
+  chatMessages = JSON.parse(localStorage.getItem(`chat_${id}`) || '[]');
+  renderMessages();
+}
+
+function handleBack() {
+  if (currentView === 'chat' && chatApplianceId) {
+    chatApplianceId = null;
+    document.getElementById('back-btn').classList.remove('visible');
+    document.getElementById('clear-btn').classList.remove('visible');
+    document.getElementById('header-title').textContent = 'チャット';
+    document.getElementById('chat-area').classList.remove('active');
+    document.getElementById('chat-select').style.display = 'flex';
+    renderChatSelect();
+  }
+}
+
+function renderMessages() {
+  const container = document.getElementById('chat-messages');
+  const typing = document.getElementById('typing');
+
+  // Remove all messages except typing indicator
+  Array.from(container.children).forEach(child => {
+    if (child !== typing) container.removeChild(child);
+  });
+
+  if (chatMessages.length === 0) {
+    const welcome = document.createElement('div');
+    welcome.className = 'empty-state';
+    welcome.innerHTML = '<div class="icon">🔧</div><p>症状や不具合を入力すると、<br>対処方法をお答えします。</p>';
+    container.insertBefore(welcome, typing);
+  }
+
+  chatMessages.forEach(msg => {
+    const div = document.createElement('div');
+    div.className = `msg ${msg.role}`;
+    const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '';
+    div.innerHTML = `${formatMessage(msg.content)}<span class="msg-time">${time}</span>`;
+    container.insertBefore(div, typing);
+  });
+
+  scrollToBottom();
+}
+
+function formatMessage(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function scrollToBottom() {
+  const container = document.getElementById('chat-messages');
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+async function sendMessage() {
+  if (isStreaming) return;
+
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!settings.apiKey) {
+    showToast('設定画面でAPIキーを入力してください');
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Add user message
+  const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() };
+  chatMessages.push(userMsg);
+  saveChatHistory();
+  renderMessages();
+
+  // Show typing indicator
+  isStreaming = true;
+  document.getElementById('chat-send').disabled = true;
+  document.getElementById('typing').classList.add('visible');
+  scrollToBottom();
+
+  try {
+    const appliance = appliances.find(a => a.id === chatApplianceId);
+    const systemPrompt = buildSystemPrompt(appliance);
+
+    // Build API messages (last 20)
+    const apiMessages = chatMessages.slice(-20).map(m => ({
+      role: m.role, content: m.content
+    }));
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: settings.model || 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: apiMessages,
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const status = response.status;
+      const apiMsg = err.error?.message || '';
+      if (status === 401) {
+        throw new Error('APIキーが無効です。設定画面で正しいキーを入力してください。');
+      } else if (status === 403) {
+        throw new Error('APIキーの権限が不足しています。Anthropic Consoleで確認してください。');
+      } else if (status === 429) {
+        throw new Error('リクエスト制限に達しました。しばらく待ってから再試行してください。');
+      } else if (apiMsg.toLowerCase().includes('credit') || apiMsg.toLowerCase().includes('balance')) {
+        throw new Error('クレジット残高が不足しています。Anthropic Consoleでクレジットを追加してください。');
+      } else {
+        throw new Error(apiMsg || `APIエラー (${status})`);
+      }
+    }
+
+    // Stream response
+    const assistantMsg = { role: 'assistant', content: '', timestamp: new Date().toISOString() };
+    chatMessages.push(assistantMsg);
+
+    document.getElementById('typing').classList.remove('visible');
+
+    // Create message bubble for streaming
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'msg assistant';
+    const container = document.getElementById('chat-messages');
+    const typing = document.getElementById('typing');
+    container.insertBefore(msgDiv, typing);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+              assistantMsg.content += parsed.delta.text;
+              msgDiv.innerHTML = `${formatMessage(assistantMsg.content)}`;
+              scrollToBottom();
+            }
+          } catch (e) { /* skip parse errors */ }
+        }
+      }
+    }
+
+    // Add timestamp to final bubble
+    const time = new Date(assistantMsg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    msgDiv.innerHTML = `${formatMessage(assistantMsg.content)}<span class="msg-time">${time}</span>`;
+    saveChatHistory();
+
+  } catch (err) {
+    document.getElementById('typing').classList.remove('visible');
+    // Remove the empty assistant message if it was added
+    if (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant' && !chatMessages[chatMessages.length - 1].content) {
+      chatMessages.pop();
+    }
+    showToast(`エラー: ${err.message}`);
+    renderMessages();
+  } finally {
+    isStreaming = false;
+    document.getElementById('chat-send').disabled = false;
+  }
+}
+
+function buildSystemPrompt(appliance) {
+  return `あなたは家電製品のトラブルシューティング専門アシスタントです。
+
+現在、以下の家電製品について相談を受けています：
+- 製品名: ${appliance.name}
+- 型番: ${appliance.modelNumber}
+- メーカー: ${appliance.manufacturer || '不明'}
+- カテゴリ: ${appliance.category}
+
+以下のルールに従ってください：
+1. この製品に関するトラブルシューティングのアドバイスを日本語で提供してください
+2. 安全に関わる問題（漏電、ガス漏れ、異常発熱など）がある場合は、必ず使用を中止し専門業者やメーカーサポートへの相談を勧めてください
+3. 回答は具体的で実行可能なステップ形式で提供してください
+4. 型番から推測できる製品の特徴や仕様があれば活用してください
+5. 修理が必要と思われる場合は、メーカーのサポート窓口への連絡も案内してください
+6. 簡潔で分かりやすい表現を心がけてください`;
+}
+
+function saveChatHistory() {
+  if (chatApplianceId) {
+    localStorage.setItem(`chat_${chatApplianceId}`, JSON.stringify(chatMessages));
+  }
+}
+
+function clearChat() {
+  if (!chatApplianceId) return;
+  const appliance = appliances.find(a => a.id === chatApplianceId);
+  document.getElementById('confirm-message').textContent = `「${appliance.name}」のチャット履歴を削除しますか？`;
+  const okBtn = document.getElementById('confirm-ok');
+  okBtn.onclick = () => {
+    chatMessages = [];
+    localStorage.removeItem(`chat_${chatApplianceId}`);
+    renderMessages();
+    closeConfirm();
+    showToast('チャット履歴を削除しました');
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ============ Settings ============
+function loadSettings() {
+  document.getElementById('api-key-input').value = settings.apiKey || '';
+  document.getElementById('model-select').value = settings.model || 'claude-sonnet-4-20250514';
+}
+
+function saveSettings() {
+  settings.apiKey = document.getElementById('api-key-input').value.trim();
+  settings.model = document.getElementById('model-select').value;
+  localStorage.setItem('settings', JSON.stringify(settings));
+  showToast('設定を保存しました');
+  updateBadges();
+}
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('api-key-input');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function testApiKey() {
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  const result = document.getElementById('test-result');
+  if (!apiKey) {
+    result.textContent = '❌ APIキーを入力してください';
+    result.style.color = 'var(--danger)';
+    return;
+  }
+  result.textContent = '⏳ 接続テスト中...';
+  result.style.color = 'var(--text-secondary)';
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Hi' }]
+      })
+    });
+    if (response.ok) {
+      result.textContent = '✅ 接続成功！APIキーは有効です。';
+      result.style.color = 'var(--success)';
+    } else {
+      const err = await response.json().catch(() => ({}));
+      const msg = err.error?.message || `ステータス: ${response.status}`;
+      result.textContent = `❌ ${msg}`;
+      result.style.color = 'var(--danger)';
+    }
+  } catch (e) {
+    result.textContent = `❌ ネットワークエラー: ${e.message}`;
+    result.style.color = 'var(--danger)';
+  }
+}
+
+// ============ Badges ============
+function updateBadges() {
+  const settingsBadge = document.getElementById('settings-badge');
+  settingsBadge.classList.toggle('visible', !settings.apiKey);
+}
+
+// ============ Textarea Auto-grow ============
+function autoGrowTextarea() {
+  const textarea = document.getElementById('chat-input');
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+  });
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
+
+// ============ Keyboard handling for mobile ============
+function handleKeyboard() {
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const chatInputArea = document.getElementById('chat-input-area');
+      if (chatInputArea && document.activeElement === document.getElementById('chat-input')) {
+        scrollToBottom();
+      }
+    });
+  }
+}
+
+// ============ Toast ============
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ============ Utils ============
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============ Start ============
+init();
+</script>
+</body>
+</html>
