@@ -300,6 +300,21 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .doctor li{animation:say .4s ease both}
 @keyframes say{from{opacity:.0;transform:translateX(-4px)}to{opacity:1;transform:none}}
 .bonus-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+/* コメント欄は枠の幅に合わせて折り返す（長いラベルや数字で枠からはみ出さない） */
+.doctor > div{min-width:0}
+.doctor li{overflow-wrap:anywhere;word-break:normal}
+.bonus-list .chip{white-space:normal;line-height:1.5;padding:3px 10px;max-width:100%}
+/* 幅の狭いスマホでも、ファネルの見出しと数字が枠に収まるように */
+.stage-labels div,.stage-counters .cnt{min-width:0}
+@media (max-width:440px){
+  .stage-labels,.stage-counters{gap:3px}
+  .stage-labels .k{display:none}
+  .stage-labels div{font-size:9px;line-height:1.3;word-break:break-all}
+  .stage-counters .cnt{padding:6px 1px}
+  .stage-counters .v{font-size:10px;letter-spacing:0}
+  .funnel-panel{padding:12px 10px}
+}
+@media (max-width:520px){.doctor{grid-template-columns:44px 1fr;gap:10px;padding:12px}.doctor svg{width:44px;height:44px}.doctor li{font-size:13px}}
 
 /* ---------- Analysis ---------- */
 .an-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;grid-auto-flow:row dense}
@@ -1495,10 +1510,12 @@ function runFunnel(res, locked, vals, instant, onDone) {
     ctx.setLineDash([]);
     if (locked) {
       ctx.fillStyle = 'rgba(19,42,79,0.06)'; ctx.fillRect(xs[4] - W / 12, 0, W / 6 * 2, H);
-      ctx.fillStyle = '#5a6378'; ctx.font = '700 13px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center';
-      ctx.fillText('購入者の中身は、まだ見えていません', (xs[4] + xs[5]) / 2, H / 2 - 6);
-      ctx.font = '12px ' + getComputedStyle(document.body).fontFamily;
-      ctx.fillText('「購入者を詳しく分析する」でアンロック', (xs[4] + xs[5]) / 2, H / 2 + 14);
+      ctx.fillStyle = '#5a6378'; ctx.textAlign = 'center';
+      const ff = getComputedStyle(document.body).fontFamily, cx = (xs[4] + xs[5]) / 2;
+      // 枠の幅に合わせて文字の大きさと改行を変える（狭い画面ではみ出さないように）
+      const lines = W >= 700 ? [['700 13px', '購入者の中身は、まだ見えていません'], ['12px', '「購入者を詳しく分析する」でアンロック']]
+        : [['700 11px', '購入者の中身は'], ['700 11px', 'まだ見えません'], ['10px', '分析でアンロック']];
+      lines.forEach((ln, k) => { ctx.font = ln[0] + ' ' + ff; ctx.fillText(ln[1], cx, H / 2 + (k - (lines.length - 1) / 2) * 16 + 4); });
     }
   };
   const lerpArr = (arr, pos) => { const p = clamp(pos, 0, 5); const i = Math.floor(p); const f = p - i; return i >= 5 ? arr[5] : arr[i] + (arr[i + 1] - arr[i]) * f; };
