@@ -396,6 +396,38 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
 .report ul.plain{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
 .print-note{font-size:11px;color:var(--muted)}
 
+/* ---------- ランキング ---------- */
+.rank-btn{border-color:var(--gold)!important;color:#fff!important}
+.rank-btn:hover{background:rgba(232,184,74,.18)!important}
+.rank-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.rank-stats div{background:var(--surface-2);border-radius:8px;padding:10px 12px;min-width:0}
+.rank-stats span{display:block;font-size:11px;color:var(--muted)}
+.rank-stats b{font-size:22px;color:var(--navy)}
+.rank-stats small{font-size:12px;margin-left:2px}
+.my-rank{background:var(--mint-soft);border-radius:8px;padding:8px 12px;margin-bottom:10px;color:var(--ink)}
+.my-rank b{color:var(--mint-ink);font-size:16px}
+.rank-table-wrap{overflow-x:auto;position:relative}
+.rank-table{width:100%;border-collapse:collapse;font-size:13px}
+.rank-table th,.rank-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rank-table th{font-size:11px;color:var(--muted);background:var(--surface-2)}
+.rank-table tr.me td{background:var(--mint-soft)}
+.rank-table .who-in{display:flex;align-items:center;gap:8px}
+.rank-table .avatar{width:24px;height:24px;border-radius:50%;flex:none;background:var(--surface-2)}
+.rank-table .pname{font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;max-width:22ch}
+.rank-table td.score b{font-size:16px;color:var(--navy)}
+.rank-table td.del{text-align:right}
+.rank-no{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:50%;font-weight:800;color:var(--navy);background:var(--surface-2)}
+.rank-no.m1{background:#e8b84a;color:#3d2a00}
+.rank-no.m2{background:#c9ced8;color:#26303f}
+.rank-no.m3{background:#d39a6a;color:#3a1f08}
+.rank-empty{color:var(--muted);font-size:13px;padding:6px 0}
+.save-note{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--surface-2);margin-bottom:10px}
+.save-note.ok{background:var(--gold-soft);color:var(--gold-ink);font-weight:700}
+.save-note.warn{background:var(--coral-soft);color:var(--coral-ink)}
+.btn-danger{background:var(--coral-ink);border-color:var(--coral-ink);color:#fff}
+.btn-danger:hover{background:#9c3620}
+@media (max-width:760px){.rank-stats{grid-template-columns:repeat(2,1fr)}}
+
 /* ---------- Footer ---------- */
 .foot{
   padding-left:max(16px,env(safe-area-inset-left,0px));
@@ -454,7 +486,7 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
       <div class="top-icons" id="topIcons" aria-hidden="true"></div>
     </div>
     <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
-    <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button><span class="snd-hint" id="sndHint">🔈 画面をクリックすると音が出ます</span></div>
+    <button type="button" class="snd rank-btn" data-action="ranking">🏆 ランキング</button><div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button><span class="snd-hint" id="sndHint">🔈 画面をクリックすると音が出ます</span></div>
     <ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol>
   </div>
 </header>
@@ -867,7 +899,8 @@ function createState() {
     analyzed: { 1: false, 2: false, 3: false },
     revealed: { 1: 0, 2: 0, 3: 0 },
     score: null,
-    busy: false
+    busy: false,
+    scoreSaved: false
   };
 }
 let state = createState();
@@ -1065,7 +1098,7 @@ function go(screen, viewRound) {
 function render() {
   renderTopbar();
   const s = state.screen;
-  const fn = { intro: renderIntro, plan: renderPlan, run: renderRun, analysis: renderAnalysis, next: renderNext, final: renderFinal, ending: renderEnding, report: renderReport }[s] || renderIntro;
+  const fn = { ranking: renderRanking, intro: renderIntro, plan: renderPlan, run: renderRun, analysis: renderAnalysis, next: renderNext, final: renderFinal, ending: renderEnding, report: renderReport }[s] || renderIntro;
   fn();
   if (s === 'final') Sound.scene('title', { jingle: 'fanfare' });
   else if (s !== 'run') Sound.scene(SCREEN_MUSIC[s] || 'main');
@@ -1081,7 +1114,7 @@ function renderTopbar() {
   $('#roundPills').innerHTML = [1, 2, 3].map(i => {
     let cls = 'round-pill';
     if (endScreens.includes(s) || state.results[i] && state.analyzed[i] && i < state.round) cls += ' is-done';
-    if (!endScreens.includes(s) && s !== 'intro' && i === r) cls += ' is-current';
+    if (!endScreens.includes(s) && s !== 'intro' && s !== 'ranking' && i === r) cls += ' is-current';
     return '<span class="' + cls + '">ROUND ' + i + '</span>';
   }).join('') + (endScreens.includes(s) ? '<span class="round-pill is-current">RESULT</span>' : '');
   let cur = -1, done = -1;
@@ -1091,7 +1124,7 @@ function renderTopbar() {
   if (s === 'analysis') { done = 4; cur = 5; }
   if (s === 'next') { done = 5; cur = 6; }
   if (endScreens.includes(s)) { done = 6; cur = -1; }
-  if (s === 'intro') { done = -1; cur = -1; }
+  if (s === 'intro' || s === 'ranking') { done = -1; cur = -1; }
   $('#progress').innerHTML = STEPS.map((t, i) => {
     const cls = i <= done ? 'is-done' : (i === cur ? 'is-current' : '');
     return '<li class="' + cls + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="n">' + (i + 1) + '</span><span class="t">' + t + '</span></li>';
@@ -1149,6 +1182,7 @@ function renderIntro() {
           '<button class="btn btn-ghost" data-action="tut-prev"' + (i === 0 ? ' disabled' : '') + '>前へ</button>' +
           (i < 2 ? '<button class="btn btn-primary" data-action="tut-next">次へ</button>' : '<button class="btn btn-accent btn-lg" data-action="start">ゲームをはじめる</button>') +
         '</div>' +
+        '<p class="small muted">最後までプレイすると、スコアが社内ランキングに登録されます。<button class="btn btn-ghost btn-sm" data-action="ranking">🏆 ランキングを見る</button></p>' +
       '</div>' +
     '</div></section>';
   heroAnimation();
@@ -1757,6 +1791,8 @@ function renderFinal() {
       '</div>' +
     '</div>' +
     doctorBlock(finalReview(r1, r3, sc).map(t => ({ t: t }))) +
+    '<div class="panel"><h3>🏆 ランキング<span class="chip">上位5人</span></h3><div class="rank-compact" data-rank-box="compact"></div>' +
+      '<div class="actions" style="margin-top:10px"><button class="btn btn-sm" data-action="ranking">ランキングをすべて見る</button></div></div>' +
     '<div class="actions between no-print"><button class="btn btn-ghost" data-action="view-analysis" data-round="3">ROUND 3の分析に戻る</button><button class="btn btn-accent btn-lg" data-action="ending">エンディングへ</button></div>' +
     '</section>';
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -1764,6 +1800,8 @@ function renderFinal() {
     const arc = $('#ringArc'); if (arc) arc.setAttribute('stroke-dashoffset', arc.getAttribute('data-off'));
     const tx = $('#ringText'); if (tx) countUp(tx, sc.total, (v) => String(Math.round(v)), 1200);
   }));
+  paintRankAll();
+  saveMyScore(sc, r3);
 }
 
 /* ---------- Ending ---------- */
@@ -2035,7 +2073,8 @@ const Sound = (() => {
       b.innerHTML = label + ' <b>' + (prefs[k] ? 'ON' : 'OFF') + '</b>';
     });
     const hint = document.getElementById('sndHint');
-    if (hint) hint.hidden = unlocked || !(prefs.bgm || prefs.sfx);
+    // 表示を消してもレイアウトがずれないよう、場所は残したまま見えなくする（クリック中のボタン移動を防ぐ）
+    if (hint) hint.style.visibility = (unlocked || !(prefs.bgm || prefs.sfx)) ? 'hidden' : 'visible';
   }
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
@@ -2051,7 +2090,155 @@ const Sound = (() => {
   function state() { return ctx ? ctx.state : 'none'; }
   return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
 })();
-const SCREEN_MUSIC = { intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
+const SCREEN_MUSIC = { ranking: 'title', intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
+
+/* =====================================================================
+   8.7 ランキング（共有データベースに各プレイヤーのベストスコアを保存）
+   - 1人1件（scores/<本人のID>）。本人だけが自分の記録を書き込める
+   - 保存するのはIDとスコアだけ。名前は表示のたびにIDから引く
+   - Claudeで共有されたリンク以外（ローカルのHTMLファイルなど）では使えない
+   ===================================================================== */
+const Rank = { db: null, user: null, uid: null, isOwner: false, canWrite: null, status: 'loading', rows: [], save: 'idle', lastBest: false, lastRank: 0, confirmDel: null };
+async function initRanking() {
+  const C = window.claude;
+  if (!C || typeof C.use !== 'function') { Rank.status = 'unavailable'; paintRankAll(); return; }
+  try { const both = await Promise.all([C.use('db'), C.use('user')]); Rank.db = both[0]; Rank.user = both[1]; } catch (e) { Rank.db = null; }
+  if (!Rank.db) { Rank.status = 'unavailable'; paintRankAll(); return; }
+  if (Rank.user) {
+    try { Rank.uid = await Rank.user.id(); } catch (e) { Rank.uid = null; }
+    try { Rank.isOwner = await Rank.user.isOwner(); } catch (e) { Rank.isOwner = false; }
+    try { Rank.canWrite = await Rank.user.can('data.write'); } catch (e) { Rank.canWrite = null; }
+  }
+  const slow = setTimeout(() => { if (Rank.status === 'loading') { Rank.status = 'slow'; paintRankAll(); } }, 10000);
+  Rank.db.collection('scores').orderBy('bestScore', 'desc').limit(500).onSnapshot(snap => {
+    Rank.rows = snap.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
+    if (!snap.metadata.fromCache) { clearTimeout(slow); Rank.status = 'ready'; }
+    else if (Rank.status === 'loading') Rank.status = 'ready';
+    paintRankAll();
+  }, () => { clearTimeout(slow); Rank.status = 'error'; paintRankAll(); });
+  paintRankAll();
+}
+/* 同点は先に達成した人を上位に。順位は同点なら同じ数字 */
+function rankedRows() {
+  const rows = Rank.rows.filter(r => typeof r.bestScore === 'number').slice().sort((a, b) => (b.bestScore - a.bestScore) || String((a.best || {}).at || '').localeCompare(String((b.best || {}).at || '')));
+  let prev = null, rank = 0;
+  rows.forEach((r, i) => { if (r.bestScore !== prev) { rank = i + 1; prev = r.bestScore; } r.rank = rank; });
+  return rows;
+}
+async function saveMyScore(sc, r3) {
+  if (state.scoreSaved) return;
+  state.scoreSaved = true;
+  if (!Rank.db) { Rank.save = 'unavailable'; paintRankAll(); return; }
+  if (!Rank.uid || Rank.canWrite === false) { Rank.save = 'readonly'; paintRankAll(); return; }
+  Rank.save = 'saving'; paintRankAll();
+  const ref = Rank.db.doc('scores/' + Rank.uid);
+  const attempt = async () => {
+    let prev = {};
+    try { const s = await ref.get(); if (s.exists) prev = s.data() || {}; } catch (e) { prev = {}; }
+    const now = new Date().toISOString();
+    const entry = { score: sc.total, title: sc.title, buyers: Math.round(safe(r3.buyers)), ltv: Math.round(safe(r3.ltvTotal)), at: now };
+    const prevBest = typeof prev.bestScore === 'number' ? prev.bestScore : -1;
+    const isBest = sc.total > prevBest;
+    const history = [entry].concat(Array.isArray(prev.history) ? prev.history : []).slice(0, 10);
+    await ref.set({ bestScore: Math.max(prevBest, sc.total), best: isBest ? entry : prev.best, plays: (Number(prev.plays) || 0) + 1, lastScore: sc.total, lastAt: now, history: history });
+    Rank.lastBest = isBest;
+  };
+  try { await attempt(); Rank.save = 'saved'; }
+  catch (e) {
+    if (e && e.code === 'unavailable') {
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 800));
+      try { await attempt(); Rank.save = 'saved'; } catch (e2) { Rank.save = 'error'; }
+    } else if (e && (e.code === 'invalid_argument' || e.code === 'not_granted')) Rank.save = 'readonly';
+    else Rank.save = 'error';
+  }
+  paintRankAll();
+}
+async function deleteEntry(id) {
+  if (!Rank.db || !Rank.isOwner) return;
+  try { await Rank.db.doc('scores/' + id).delete(); } catch (e) { /* 一覧は自動で更新される */ }
+  Rank.confirmDel = null; paintRankAll();
+}
+function fmtWhen(iso) {
+  const d = new Date(iso); if (isNaN(d)) return '—';
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function rankStatusText() {
+  if (Rank.status === 'unavailable') return 'ランキングは、Claudeで共有されたリンクから開いたときに使えます（サインインが必要です）。';
+  if (Rank.status === 'loading') return 'ランキングを読み込んでいます…';
+  if (Rank.status === 'slow') return 'ランキングの読み込みに時間がかかっています。通信状況をご確認ください。';
+  if (Rank.status === 'error') return 'ランキングを読み込めませんでした。ページを開き直してください。';
+  return '';
+}
+function saveStatusHtml() {
+  const map = {
+    saving: ['', 'スコアをランキングに登録しています…'],
+    saved: ['ok', Rank.lastBest ? '自己ベストを更新！ランキングに登録しました。' : 'ランキングに記録しました（自己ベストは前回以前の記録です）。'],
+    readonly: ['warn', 'この閲覧権限ではスコアを登録できません。共有リンクの権限（Contributor以上）をご確認ください。'],
+    unavailable: ['warn', 'このページではランキングに登録できません（Claudeの共有リンクから開くと登録されます）。'],
+    error: ['warn', 'スコアを登録できませんでした。もう一度プレイすると再登録されます。']
+  };
+  const m = map[Rank.save]; if (!m) return '';
+  return '<p class="save-note ' + m[0] + '" role="status">' + m[1] + '</p>';
+}
+/* ランキング表を描く。compact=最終結果画面用の上位5件 */
+function paintRank(box) {
+  const compact = box.getAttribute('data-rank-box') === 'compact';
+  const rows = rankedRows();
+  const status = rankStatusText();
+  let html = '';
+  if (compact) html += saveStatusHtml();
+  if (status && !rows.length) { box.innerHTML = html + '<p class="rank-empty">' + status + '</p>'; return; }
+  if (!rows.length) { box.innerHTML = html + '<p class="rank-empty">まだ記録がありません。ゲームを最後までプレイすると、ここにスコアが載ります。</p>'; return; }
+  const mine = rows.find(r => r.id === Rank.uid);
+  if (!compact) {
+    const plays = rows.reduce((a, r) => a + (Number(r.plays) || 0), 0);
+    const avg = rows.reduce((a, r) => a + r.bestScore, 0) / rows.length;
+    html += '<div class="rank-stats">' +
+      '<div><span>参加者</span><b class="num">' + rows.length + '<small>人</small></b></div>' +
+      '<div><span>総プレイ回数</span><b class="num">' + plays + '<small>回</small></b></div>' +
+      '<div><span>平均ベストスコア</span><b class="num">' + avg.toFixed(1) + '<small>点</small></b></div>' +
+      '<div><span>最高スコア</span><b class="num">' + rows[0].bestScore + '<small>点</small></b></div></div>';
+  }
+  if (mine) html += '<p class="my-rank">あなたは <b class="num">' + mine.rank + '位</b>（' + rows.length + '人中）・ベスト <b class="num">' + mine.bestScore + '点</b></p>';
+  let shown = compact ? rows.slice(0, 5) : rows;
+  if (compact && mine && mine.rank > 5) shown = shown.concat([mine]);
+  html += '<div class="rank-table-wrap"><table class="rank-table"><thead><tr><th scope="col">順位</th><th scope="col">プレイヤー</th><th scope="col">ベストスコア</th>' +
+    (compact ? '' : '<th scope="col">称号</th><th scope="col">プレイ回数</th><th scope="col">最終プレイ</th>' + (Rank.isOwner ? '<th scope="col"><span class="sr-only">管理</span></th>' : '')) + '</tr></thead><tbody>' +
+    shown.map(r => {
+      const medal = r.rank <= 3 ? ' medal m' + r.rank : '';
+      const del = Rank.isOwner && !compact ? '<td class="del">' + (Rank.confirmDel === r.id
+        ? '<button class="btn btn-sm btn-danger" data-action="rank-del-yes" data-id="' + esc(r.id) + '">削除する</button> <button class="btn btn-sm btn-ghost" data-action="rank-del-no">やめる</button>'
+        : '<button class="btn btn-sm btn-ghost" data-action="rank-del" data-id="' + esc(r.id) + '">記録を削除</button>') + '</td>' : '';
+      return '<tr class="' + (r.id === Rank.uid ? 'me' : '') + '"><td><span class="rank-no num' + medal + '">' + r.rank + '</span></td>' +
+        '<td class="who"><div class="who-in"><img class="avatar" alt="" data-avatar="' + esc(r.id) + '"><span class="pname" data-name="' + esc(r.id) + '">…</span>' + (r.id === Rank.uid ? '<span class="chip mint">あなた</span>' : '') + '</div></td>' +
+        '<td class="score num"><b>' + r.bestScore + '</b> 点</td>' +
+        (compact ? '' : '<td>' + esc((r.best && r.best.title) || scoreTitle(r.bestScore)) + '</td><td class="num">' + (Number(r.plays) || 0) + ' 回</td><td class="num">' + fmtWhen(r.lastAt) + '</td>' + del) + '</tr>';
+    }).join('') + '</tbody></table></div>';
+  if (status) html += '<p class="rank-empty">' + status + '</p>';
+  box.innerHTML = html;
+  // 名前とアイコンはIDから表示のたびに解決する（保存はしない）
+  if (Rank.user) {
+    const ids = shown.map(r => r.id);
+    Rank.user.profiles(ids).then(ps => {
+      $$('[data-name]', box).forEach(el => { const p = ps[el.getAttribute('data-name')]; el.textContent = (p && p.name) || 'プレイヤー'; });
+      $$('[data-avatar]', box).forEach(el => { const p = ps[el.getAttribute('data-avatar')]; if (p && p.avatarUrl) el.src = p.avatarUrl; else el.remove(); });
+    }).catch(() => { $$('[data-name]', box).forEach(el => { el.textContent = 'プレイヤー'; }); });
+  } else {
+    $$('[data-name]', box).forEach(el => { el.textContent = 'プレイヤー'; });
+    $$('[data-avatar]', box).forEach(el => el.remove());
+  }
+}
+function paintRankAll() { $$('[data-rank-box]').forEach(paintRank); }
+function renderRanking() {
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('LEADERBOARD', '🏆 ランキング', 'ゲームを最後までプレイした人の、ベストスコア順です。新しい記録はリアルタイムで反映されます。',
+      '<button class="btn btn-ghost" data-action="rank-back">ゲームに戻る</button>') +
+    '<div class="panel rank-panel" data-rank-box="full"></div>' +
+    (Rank.isOwner ? '<p class="note">あなたはこのゲームの作成者なので、テストプレイなどの記録を削除できます。他のプレイヤーには削除ボタンは表示されません。</p>' : '') +
+    '</section>';
+  paintRankAll();
+}
 
 /* =====================================================================
    9. イベント処理
@@ -2083,6 +2270,11 @@ document.addEventListener('click', (e) => {
     case 'report': go('report', 3); break;
     case 'print': try { window.print(); } catch (err) { const n = $('#printNote'); if (n) n.textContent = '印刷を開始できませんでした。HTMLファイルをブラウザで開いてお試しください。'; } break;
     case 'restart': restart(); break;
+    case 'ranking': if (state.screen !== 'ranking') { state.rankFrom = { screen: state.screen, round: state.viewRound }; go('ranking', state.viewRound); } break;
+    case 'rank-back': { const f = state.rankFrom || { screen: 'intro', round: 1 }; go(f.screen === 'ranking' ? 'intro' : f.screen, f.round); break; }
+    case 'rank-del': Rank.confirmDel = el.getAttribute('data-id'); paintRankAll(); break;
+    case 'rank-del-no': Rank.confirmDel = null; paintRankAll(); break;
+    case 'rank-del-yes': deleteEntry(el.getAttribute('data-id')); break;
     case 'pico': el.classList.remove('px-jump'); void el.offsetWidth; el.classList.add('px-jump'); break;
   }
 });
@@ -2119,6 +2311,7 @@ window.addEventListener('resize', () => {
 });
 
 Sound.renderButtons();
+initRanking();
 { const ti = document.getElementById('topIcons'); if (ti) ti.innerHTML = pixelIcons('px-sm'); }
 render();
 </script>
