@@ -204,6 +204,21 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .prev-hint{border-left:3px solid var(--mint);background:var(--mint-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px}
 .prev-hint b{color:var(--mint-ink)}
 
+/* ---------- トップ画面のタイトルバナー（中央揃え） ---------- */
+.title-banner{background:var(--navy);color:#fff;border-radius:14px;padding:clamp(22px,3.2vw,40px) 20px clamp(18px,2.6vw,30px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;overflow:hidden}
+.tb-row{display:flex;align-items:center;justify-content:center;gap:clamp(14px,2.4vw,36px);width:100%}
+.tb-title{color:#fff;font-family:var(--font-num);font-weight:800;font-size:clamp(30px,4vw,60px);letter-spacing:.07em;line-height:1.05;white-space:nowrap;text-shadow:0 4px 0 rgba(43,179,155,.55)}
+.tb-sub{color:var(--mint);font-weight:700;font-size:clamp(14px,1.7vw,20px);letter-spacing:.06em}
+.px-side{position:relative;display:flex;gap:clamp(8px,1.2vw,16px);align-items:center;flex:none}
+.title-banner .px-lg{width:clamp(34px,3.6vw,52px);height:clamp(34px,3.6vw,52px)}
+.title-banner .px-star.s0{top:-10px;left:-14px}
+.title-banner .px-star.s1{top:-10px;right:-14px}
+.title-banner .px-star.s2{bottom:-12px;left:40%}
+@media (max-width:1000px){
+  .tb-row{flex-wrap:wrap}
+  .tb-title{order:-1;flex-basis:100%;white-space:normal}
+}
+
 /* ---------- ドット絵アイコン（ピコピコ動く） ---------- */
 .hero-title-row{display:flex;align-items:center;gap:20px 28px;flex-wrap:wrap}
 .px-cluster{position:relative;display:grid;grid-template-columns:repeat(3,auto);gap:14px 18px;padding:10px 4px}
@@ -1110,11 +1125,17 @@ function renderIntro() {
   const i = clamp(state.tutorial, 0, 2);
   const card = TUTORIAL[i];
   stage.innerHTML =
-    '<section class="screen"><div class="intro">' +
+    '<section class="screen">' +
+    '<header class="title-banner">' +
+      '<div class="tb-row">' +
+        '<div class="px-side" aria-hidden="true">' + pixelIcons('px-lg', ['tv', 'signage', 'phone']) + '<i class="px-star s0"></i></div>' +
+        '<h1 class="tb-title">RETAIL MEDIA QUEST</h1>' +
+        '<div class="px-side" aria-hidden="true">' + pixelIcons('px-lg', ['cart', 'bottle', 'coin']) + '<i class="px-star s1"></i><i class="px-star s2"></i></div>' +
+      '</div>' +
+      '<p class="tb-sub">広告接触を、購買とLTVにつなげよう</p>' +
+    '</header>' +
+    '<div class="intro">' +
       '<div class="intro-hero">' +
-        '<div><div class="hero-title-row"><h1>RETAIL<br>MEDIA<br>QUEST</h1>' +
-        '<div class="px-cluster" aria-hidden="true">' + pixelIcons('px-lg') + '<i class="px-star s0"></i><i class="px-star s1"></i><i class="px-star s2"></i></div></div>' +
-        '<p class="sub">広告接触を、購買とLTVにつなげよう</p></div>' +
         '<canvas id="heroCanvas" aria-hidden="true"></canvas>' +
         '<div style="display:flex;flex-direction:column;gap:10px"><span class="brand-card"><b>MINTÉ</b>架空のヘアケアブランド</span>' +
         '<p class="role">あなたはMINTÉのマーケティング責任者です。1ラウンド1,000万円の広告予算で、全3ラウンドの戦略改善に挑みます。（所要 5〜8分）</p></div>' +
@@ -1160,8 +1181,8 @@ function pixelSvg(name) {
   });
   return '<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" focusable="false">' + rects + '</svg>';
 }
-function pixelIcons(cls) {
-  return PX_ORDER.map((n, i) => '<span class="px ' + cls + '" data-action="pico" data-icon="' + n + '" title="' + PX_ICONS[n].label + '" style="--i:' + i + '">' + pixelSvg(n) + '</span>').join('');
+function pixelIcons(cls, names) {
+  return (names || PX_ORDER).map((n, i) => '<span class="px ' + cls + '" data-action="pico" data-icon="' + n + '" title="' + PX_ICONS[n].label + '" style="--i:' + i + '">' + pixelSvg(n) + '</span>').join('');
 }
 
 function heroAnimation() {
