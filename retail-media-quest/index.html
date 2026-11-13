@@ -70,6 +70,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .sound-ctrl{display:flex;gap:6px}
 .snd{appearance:none;cursor:pointer;font-size:11px;letter-spacing:.04em;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:transparent;color:rgba(255,255,255,.75);min-height:26px;white-space:nowrap;transition:background .15s,color .15s}
 .snd b{font-family:var(--font-num);margin-left:2px}
+.sound-ctrl{align-items:center;flex-wrap:wrap}
+.snd-hint{font-size:11px;color:var(--mint);white-space:nowrap}
 .snd:hover{background:rgba(255,255,255,.1)}
 .snd:active{transform:translateY(1px)}
 .snd[aria-pressed="true"]{border-color:var(--mint);color:#fff}
@@ -411,7 +413,7 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
       <div><strong>RETAIL MEDIA QUEST</strong><span>広告接触を、購買とLTVにつなげよう</span></div>
     </div>
     <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
-    <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button></div>
+    <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button><span class="snd-hint" id="sndHint">🔈 画面をクリックすると音が出ます</span></div>
     <ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol>
   </div>
 </header>
@@ -1773,7 +1775,8 @@ const Sound = (() => {
   try { const v = JSON.parse(localStorage.getItem('rmq-sound') || 'null'); if (v) { prefs.bgm = v.bgm !== false; prefs.sfx = v.sfx !== false; } } catch (e) { /* 保存なしでも動く */ }
   const savePrefs = () => { try { localStorage.setItem('rmq-sound', JSON.stringify(prefs)); } catch (e) { /* noop */ } };
 
-  let ctx = null, master, bgmBus, sfxBus, noiseBuf, pulse = {};
+  const CONFIG_SOUND = { master: 0.9, bgm: 0.8, sfx: 2.2 };
+  let ctx = null, master, bgmBus, sfxBus, limiter, analyser, noiseBuf, pulse = {};
   let unlocked = false, wanted = null, playing = null, after = null, timer = 0, nextTime = 0, stepIdx = 0, compiled = null;
   const compiledCache = {};
 
@@ -1782,9 +1785,16 @@ const Sound = (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     try { ctx = new AC(); } catch (e) { ctx = null; return false; }
-    master = ctx.createGain(); master.gain.value = 0.22; master.connect(ctx.destination);
-    bgmBus = ctx.createGain(); bgmBus.gain.value = 0.6; bgmBus.connect(master);
-    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
+    // 音量：十分に聞こえる大きさにし、最後にリミッターで音割れを防ぐ
+    limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -8; limiter.knee.value = 6; limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.15;
+    limiter.connect(ctx.destination);
+    analyser = ctx.createAnalyser(); analyser.fftSize = 2048; limiter.connect(analyser);
+    master = ctx.createGain(); master.gain.value = CONFIG_SOUND.master; master.connect(limiter);
+    bgmBus = ctx.createGain(); bgmBus.gain.value = CONFIG_SOUND.bgm; bgmBus.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = CONFIG_SOUND.sfx; sfxBus.connect(master);
+    // iPhone/iPad：消音モードでも鳴るように「再生」用途として扱う（対応ブラウザのみ）
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* noop */ }
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -1912,12 +1922,23 @@ const Sound = (() => {
     if (wanted.jingle) startSong(wanted.jingle, name);
     else if (playing !== name && !(after === name)) startSong(name);
   }
-  function unlock() {
+  /* 音の再生許可：ブラウザごとに許可される操作が違うため、音が出る状態になるまで毎回の操作で再挑戦する */
+  function onRunning() {
     if (unlocked) return;
-    if (!init()) return;
     unlocked = true;
-    try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) { /* noop */ }
     if (wanted) scene(wanted.name);
+    renderButtons();
+  }
+  function unlock() {
+    if (!init()) return;
+    if (ctx.state === 'running') { onRunning(); return; }
+    try {
+      // 無音を1回鳴らすと、iPhoneなどで音声が有効になる
+      const b = ctx.createBufferSource(); b.buffer = ctx.createBuffer(1, 1, 22050); b.connect(ctx.destination); b.start(0);
+      const pr = ctx.resume();
+      if (pr && pr.then) pr.then(() => { if (ctx.state === 'running') onRunning(); }).catch(() => {});
+    } catch (e) { /* noop */ }
+    if (ctx.state === 'running') onRunning();
   }
   function toggle(kind) {
     prefs[kind] = !prefs[kind]; savePrefs();
@@ -1932,13 +1953,22 @@ const Sound = (() => {
       b.setAttribute('aria-pressed', prefs[k] ? 'true' : 'false');
       b.innerHTML = label + ' <b>' + (prefs[k] ? 'ON' : 'OFF') + '</b>';
     });
+    const hint = document.getElementById('sndHint');
+    if (hint) hint.hidden = unlocked || !(prefs.bgm || prefs.sfx);
   }
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
     try { if (document.hidden) ctx.suspend(); else ctx.resume(); } catch (e) { /* noop */ }
   });
-  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlock, { capture: true, passive: true }));
-  return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile };
+  ['pointerdown', 'pointerup', 'mousedown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, unlock, { capture: true, passive: true }));
+  // 確認用：いま出ている音の大きさ（0〜1のピーク値）
+  function level() {
+    if (!analyser) return 0;
+    const a = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(a);
+    let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i])); return m;
+  }
+  function state() { return ctx ? ctx.state : 'none'; }
+  return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
 })();
 const SCREEN_MUSIC = { intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
 
