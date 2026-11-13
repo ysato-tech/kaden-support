@@ -2108,7 +2108,7 @@ const Sound = (() => {
   try { if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } } catch (e) { /* noop */ }
   const VOICES = {
     yay: { text: 'イエーイ！', pitch: 1.9, rate: 1.25 },
-    aww: { text: 'あー…', pitch: 0.4, rate: 0.55 }
+    aww: { text: 'あーあ…', pitch: 0.4, rate: 0.55 }
   };
   function voice(kind) {
     if (!prefs.sfx || !VOICES[kind]) return;
@@ -2292,8 +2292,8 @@ document.addEventListener('click', (e) => {
     case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
     case 'tut-prev': state.tutorial = clamp(state.tutorial - 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-prev"]:not([disabled]),[data-action="tut-next"]'); break;
     case 'start': go('plan', 1); break;
-    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { watchSignage(p.sig); p.tv = 250; p.dooh = 250; p.dig = 250; p.sig = 250; updatePlanReadouts(); } break; }
-    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { watchSignage(p.sig); const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.dig = d.dig; p.sig = d.sig; updatePlanReadouts(); } break; }
+    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { p.tv = 250; p.dooh = 250; p.dig = 250; p.sig = 250; updatePlanReadouts(); } break; }
+    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.dig = d.dig; p.sig = d.sig; updatePlanReadouts(); } break; }
     case 'deliver': el.disabled = true; deliver(); break;
     case 'skip-anim': if (anim.finish) anim.finish(); break;
     case 'analyze': go('analysis', state.viewRound); break;
@@ -2316,7 +2316,7 @@ document.addEventListener('click', (e) => {
   }
 });
 function focusFirst(sel) { const b = $(sel, stage); if (b) try { b.focus(); } catch (e) { /* noop */ } }
-/* 店内サイネージの予算が上がったら「イエーイ！」、下がったら「あー…」。
+/* 店内サイネージのスライダーで予算を上げたら「イエーイ！」、下げたら「あーあ…」。
    スライダーを動かしている間はまとめて、手を止めた時点の増減で1回だけ反応する */
 const sigWatch = { base: null, timer: 0 };
 function watchSignage(before) {
@@ -2336,7 +2336,7 @@ function sigBubble(kind, d) {
   const old = $('.sig-bubble'); if (old) old.remove();
   const b = document.createElement('span');
   b.className = 'sig-bubble ' + kind; b.setAttribute('role', 'status');
-  b.textContent = (kind === 'yay' ? 'イエーイ！ ' : 'あー… ') + (d > 0 ? '+' : '−') + fmt.man(Math.abs(d));
+  b.textContent = (kind === 'yay' ? 'イエーイ！ ' : 'あーあ… ') + (d > 0 ? '+' : '−') + fmt.man(Math.abs(d));
   host.parentNode.insertBefore(b, host);
   setTimeout(() => { if (b.parentNode) b.remove(); }, 1800);
 }
@@ -2344,7 +2344,8 @@ document.addEventListener('input', (e) => {
   const t = e.target;
   if (t && t.matches('input[type=range][data-media]')) {
     if (state.results[state.viewRound]) return;
-    const pl = state.plans[state.viewRound]; if (pl) watchSignage(pl.sig);
+    // サイネージのスライダーを直接動かしたときだけ反応（他の媒体を動かして相対的に変わったときは鳴らさない）
+    const pl = state.plans[state.viewRound]; if (pl && t.getAttribute('data-media') === 'sig') watchSignage(pl.sig);
     setBudget(t.getAttribute('data-media'), Number(t.value));
     Sound.sfx('tick');
     updatePlanReadouts();
