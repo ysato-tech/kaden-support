@@ -204,6 +204,31 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .prev-hint{border-left:3px solid var(--mint);background:var(--mint-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px}
 .prev-hint b{color:var(--mint-ink)}
 
+/* ---------- ドット絵アイコン（ピコピコ動く） ---------- */
+.hero-title-row{display:flex;align-items:center;gap:20px 28px;flex-wrap:wrap}
+.px-cluster{position:relative;display:grid;grid-template-columns:repeat(3,auto);gap:14px 18px;padding:10px 4px}
+.px{display:inline-block;cursor:pointer;animation:pico .9s steps(1,end) infinite;animation-delay:calc(var(--i) * -.15s)}
+.px svg{display:block;width:100%;height:100%}
+.px-lg{width:clamp(40px,4.4vw,58px);height:clamp(40px,4.4vw,58px)}
+.px-sm{width:20px;height:20px;animation-name:pico-sm}
+.px:nth-child(even){animation-name:pico-alt}
+.px-sm:nth-child(even){animation-name:pico-sm-alt}
+.px:hover{filter:brightness(1.15)}
+.px.px-jump{animation:px-jump .5s steps(5,end) 1}
+@keyframes pico{0%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pico-alt{0%{transform:translateY(-4px) rotate(-6deg)}50%{transform:translateY(0) rotate(6deg)}}
+@keyframes pico-sm{0%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes pico-sm-alt{0%{transform:translateY(-2px)}50%{transform:translateY(0)}}
+@keyframes px-jump{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-18px) scale(1.15)}70%{transform:translateY(-8px) rotate(10deg)}100%{transform:translateY(0)}}
+.px-star{position:absolute;width:6px;height:6px;background:#e8b84a;box-shadow:6px 0 0 #fffdf9;animation:twinkle 1.2s steps(1,end) infinite}
+.px-star.s0{top:-6px;left:-10px}
+.px-star.s1{top:40%;right:-18px;background:#2bb39b;animation-delay:-.4s}
+.px-star.s2{bottom:-6px;left:35%;background:#ee6a4d;animation-delay:-.8s}
+@keyframes twinkle{0%{opacity:1}33%{opacity:0}66%{opacity:.6}}
+.top-icons{display:flex;gap:8px;align-items:center;padding-left:6px}
+@media (max-width:900px){.top-icons{display:none}}
+@media (max-width:760px){.px-cluster{grid-template-columns:repeat(6,auto);gap:10px}.px-lg{width:36px;height:36px}}
+
 /* ---------- Funnel ---------- */
 .funnel-panel{padding:16px 18px 14px}
 .stage-labels,.stage-counters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
@@ -411,6 +436,7 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <div><strong>RETAIL MEDIA QUEST</strong><span>広告接触を、購買とLTVにつなげよう</span></div>
+      <div class="top-icons" id="topIcons" aria-hidden="true"></div>
     </div>
     <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
     <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button><span class="snd-hint" id="sndHint">🔈 画面をクリックすると音が出ます</span></div>
@@ -1086,7 +1112,9 @@ function renderIntro() {
   stage.innerHTML =
     '<section class="screen"><div class="intro">' +
       '<div class="intro-hero">' +
-        '<div><h1>RETAIL<br>MEDIA<br>QUEST</h1><p class="sub">広告接触を、購買とLTVにつなげよう</p></div>' +
+        '<div><div class="hero-title-row"><h1>RETAIL<br>MEDIA<br>QUEST</h1>' +
+        '<div class="px-cluster" aria-hidden="true">' + pixelIcons('px-lg') + '<i class="px-star s0"></i><i class="px-star s1"></i><i class="px-star s2"></i></div></div>' +
+        '<p class="sub">広告接触を、購買とLTVにつなげよう</p></div>' +
         '<canvas id="heroCanvas" aria-hidden="true"></canvas>' +
         '<div style="display:flex;flex-direction:column;gap:10px"><span class="brand-card"><b>MINTÉ</b>架空のヘアケアブランド</span>' +
         '<p class="role">あなたはMINTÉのマーケティング責任者です。1ラウンド1,000万円の広告予算で、全3ラウンドの戦略改善に挑みます。（所要 5〜8分）</p></div>' +
@@ -1104,6 +1132,38 @@ function renderIntro() {
     '</div></section>';
   heroAnimation();
 }
+/* =====================================================================
+   ドット絵アイコン（ファミコン風）：12×12マスの文字列から描く
+   w=白 d=画面 m=ミント c=コーラル g=ゴールド s=空色 .=透明
+   ===================================================================== */
+const PX_COLORS = { w: '#fffdf9', d: '#0b1a33', m: '#2bb39b', c: '#ee6a4d', g: '#e8b84a', s: '#6fa0e6' };
+const PX_ICONS = {
+  tv: { label: 'テレビCM', rows: ['...w....w...', '....w..w....', '.....ww.....', 'wwwwwwwwwwww', 'wddddddddwcw', 'wdsmsssddwww', 'wdsssmsddwcw', 'wdssssssdwww', 'wddddddddwgw', 'wwwwwwwwwwww', '.ww......ww.', '............'] },
+  signage: { label: 'サイネージ', rows: ['wwwwwwwwwwww', 'wddddddddddw', 'wddddddddcdw', 'wddddddgdcdw', 'wddddmdgdcdw', 'wddsdmdgdcdw', 'wddsdmdgdcdw', 'wddddddddddw', 'wwwwwwwwwwww', '.....ww.....', '.....ww.....', '...wwwwww...'] },
+  phone: { label: 'スマホ', rows: ['...wwwwww...', '..wddddddw..', '..wdmmmmdw..', '..wdmwwmdw..', '..wdmmmmdw..', '..wdccccdw..', '..wdsssddw..', '..wdssssdw..', '..wddddddw..', '..wddwwddw..', '...wwwwww...', '............'] },
+  cart: { label: '買い物カゴ', rows: ['ww..........', '.w..........', '.wwwwwwwwwww', '..wcgcmcsgw.', '..wmcsgcmcw.', '...wwwwwwww.', '...w.....w..', '...wwwwwwww.', '............', '....ww...ww.', '....ww...ww.', '............'] },
+  bottle: { label: 'MINTÉ', rows: ['....wwww....', '.....ww.....', '....wwww....', '...wmmmmw...', '..wmmmmmmw..', '..wmwwwwmw..', '..wmwccwmw..', '..wmwwwwmw..', '..wmmmmmmw..', '..wmmmmmmw..', '...wwwwww...', '............'] },
+  coin: { label: '売上', rows: ['....gggg....', '..gggggggg..', '.ggwggggwgg.', '.gggwggwggg.', 'ggggwwwwgggg', 'gggggwwggggg', 'ggggwwwwgggg', 'gggggwwggggg', '.ggggwwgggg.', '.gggggggggg.', '..gggggggg..', '....gggg....'] }
+};
+const PX_ORDER = ['tv', 'signage', 'phone', 'cart', 'bottle', 'coin'];
+function pixelSvg(name) {
+  const ic = PX_ICONS[name]; if (!ic) return '';
+  let rects = '';
+  ic.rows.forEach((row, y) => {
+    let x = 0;
+    while (x < row.length) {          // 横に並んだ同じ色のマスは1つの四角にまとめる
+      const ch = row[x]; let w = 1;
+      while (x + w < row.length && row[x + w] === ch) w++;
+      if (PX_COLORS[ch]) rects += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="1" fill="' + PX_COLORS[ch] + '"/>';
+      x += w;
+    }
+  });
+  return '<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" focusable="false">' + rects + '</svg>';
+}
+function pixelIcons(cls) {
+  return PX_ORDER.map((n, i) => '<span class="px ' + cls + '" data-action="pico" data-icon="' + n + '" title="' + PX_ICONS[n].label + '" style="--i:' + i + '">' + pixelSvg(n) + '</span>').join('');
+}
+
 function heroAnimation() {
   const cv = $('#heroCanvas'); if (!cv) return;
   const ctx = setupCanvas(cv); if (!ctx) return;
@@ -1981,7 +2041,7 @@ document.addEventListener('click', (e) => {
   const act = el.getAttribute('data-action');
   if (act === 'toggle-bgm' || act === 'toggle-sfx') { Sound.toggle(act === 'toggle-bgm' ? 'bgm' : 'sfx'); return; }
   const SFX_FOR = { deliver: 'deliver', start: 'confirm', analyze: 'confirm', 'to-next': 'confirm', 'next-round': 'confirm', ending: 'confirm', report: 'confirm', 'reveal-all': 'reveal', 'tut-prev': 'back', 'view-analysis': 'back', 'view-run': 'back', 'back-plan': 'back' };
-  Sound.sfx(SFX_FOR[act] || 'click');
+  Sound.sfx(act === 'pico' ? (el.getAttribute('data-icon') === 'coin' ? 'coin' : 'select') : (SFX_FOR[act] || 'click'));
   const rd = Number(el.getAttribute('data-round')) || state.viewRound;
   switch (act) {
     case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
@@ -2002,6 +2062,7 @@ document.addEventListener('click', (e) => {
     case 'report': go('report', 3); break;
     case 'print': try { window.print(); } catch (err) { const n = $('#printNote'); if (n) n.textContent = '印刷を開始できませんでした。HTMLファイルをブラウザで開いてお試しください。'; } break;
     case 'restart': restart(); break;
+    case 'pico': el.classList.remove('px-jump'); void el.offsetWidth; el.classList.add('px-jump'); break;
   }
 });
 function focusFirst(sel) { const b = $(sel, stage); if (b) try { b.focus(); } catch (e) { /* noop */ } }
@@ -2037,6 +2098,7 @@ window.addEventListener('resize', () => {
 });
 
 Sound.renderButtons();
+{ const ti = document.getElementById('topIcons'); if (ti) ti.innerHTML = pixelIcons('px-sm'); }
 render();
 </script>
 </body>
