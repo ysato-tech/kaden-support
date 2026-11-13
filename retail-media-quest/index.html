@@ -25,6 +25,8 @@
   --gold:#c8952a;
   --gold-ink:#8a620c;
   --gold-soft:#f6ecd3;
+  --sky:#3f6fb5;
+  --sky-soft:#e1eaf7;
   --focus:#1f6fd1;
   --font-body:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
   --font-num:"Avenir Next","Segoe UI","Helvetica Neue",Arial,"Hiragino Sans","Noto Sans JP",sans-serif;
@@ -140,6 +142,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .chip.mint{background:var(--mint-soft);border-color:#b7e4d9;color:var(--mint-ink)}
 .chip.coral{background:var(--coral-soft);border-color:#f6c4b7;color:var(--coral-ink)}
 .chip.gold{background:var(--gold-soft);border-color:#ead59e;color:var(--gold-ink)}
+.chip.sky{background:var(--sky-soft);border-color:#bccde8;color:var(--sky)}
 .chip.navy{background:var(--navy);border-color:var(--navy);color:#fff}
 .dots{display:flex;gap:8px}
 .dots span{width:28px;height:4px;border-radius:2px;background:var(--line)}
@@ -154,6 +157,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .ico-tv{background:var(--navy-2)}
 .ico-dooh{background:var(--mint-ink)}
 .ico-sig{background:var(--coral-ink)}
+.ico-dig{background:var(--sky)}
 .media-val{text-align:right;font-weight:800;font-size:18px;color:var(--navy)}
 .media-val small{font-size:11px;font-weight:400;color:var(--muted)}
 .media-tags{grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap}
@@ -282,7 +286,7 @@ table.data .mini{display:inline-block;height:8px;border-radius:4px;background:va
 .big-stat .u{font-weight:700;color:var(--gold-ink)}
 .mini-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mini-cards div{background:var(--surface-2);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);min-width:0}
-.mini-cards b{display:block;font-size:15px;color:var(--ink);font-family:var(--font-num)}
+.mini-cards b{display:block;font-size:14px;white-space:nowrap;color:var(--ink);font-family:var(--font-num)}
 .note{font-size:11px;color:var(--muted);line-height:1.6}
 .disclaimer{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:2px}
 
@@ -427,11 +431,12 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
 const CONFIG = {
   BUDGET_TOTAL: 1000,          // 1ラウンドの予算（万円）
   BUDGET_STEP: 10,             // スライダーの刻み（万円）
-  REACH_PER_MILLION: { tv: 30000, dooh: 20000, sig: 8000 }, // 100万円あたりの推定接触者数
+  REACH_PER_MILLION: { tv: 30000, dooh: 20000, dig: 25000, sig: 8000 }, // 100万円あたりの推定接触者数
   POPULATION: 1200000,         // 配信エリアの想定生活者数
-  PRECISION: { tv: 0.2, dooh: 0.6, doohStation: 0.85 }, // ターゲット精度（0=全体に均等、1=ターゲットに集中）
+  PRECISION: { tv: 0.2, dooh: 0.6, doohStation: 0.85, dig: 0.85 }, // ターゲット精度（0=全体に均等、1=ターゲットに集中）
   BASE_VISIT: 0.04,            // 広告接触者の基本来店率
-  MEDIA_VISIT: { tv: 0.9, dooh: 1.6 }, // 媒体別の来店しやすさ
+  MEDIA_VISIT: { tv: 0.9, dooh: 1.6, dig: 0.9 },
+  DIG_TARGETED: 1.45,          // デジタル広告：配信先を絞ったとき（ROUND 2以降）の来店率の伸び // 媒体別の来店しやすさ
   TV_MAX_REACH: 0.85,          // TVCMの到達上限
   SIG_CONTACT_BASE: 0.35,      // 来店者の店内サイネージ接触率（基準予算時）
   SIG_REF_BUDGET: 333,         // サイネージ接触率35%となる基準予算（万円）
@@ -440,7 +445,10 @@ const CONFIG = {
   BUY_NOSIG: 0.04,             // サイネージ非接触者の基本購入率
   BUY_UNLINKED: 0.03,          // 広告接触を確認できない来店者の購入率
   ORGANIC_SHOPPERS: 8000,      // 店外広告に接触していないヘアケア売場来店者
-  OVERLAP: { tvDoohVisit: 1.25, doohSig: 1.40, tvSig: 1.25, allSig: 1.70 },
+  // 重複接触の効果（来店率）：店外媒体の組み合わせごと
+  OVERLAP_VISIT: { 'tv+dooh': 1.25, 'tv+dig': 1.20, 'dooh+dig': 1.30, 'tv+dooh+dig': 1.45 },
+  // 重複接触の効果（店内サイネージ接触者の購入率）：店外媒体の組み合わせごと
+  OVERLAP_SIG: { 'tv': 1.25, 'dooh': 1.40, 'dig': 1.35, 'tv+dooh': 1.70, 'tv+dig': 1.60, 'dooh+dig': 1.80, 'tv+dooh+dig': 1.95 },
   BONUS: { f2030Trial: 1.25, hairFunc: 1.30, newcandTrial: 1.35, repeatCont: 1.40, stationDooh: 1.30, stationDoohShare: 0.40, competitorFunc: 1.30 },
   NOISE: 0.05,                 // ±5%のランダム変動
   HOT_SEGMENTS: [0, 1, 3],     // ゲームごとに1つ選ばれる「実は購入につながりやすい顧客層」の候補
@@ -460,15 +468,15 @@ const CONFIG = {
 
 const SEGMENTS = [
   { id: 'A', name: '20〜30代女性・駅前利用', short: '20-30代女性・駅前', share: 0.25, mix: [0.72, 0.18, 0.10],
-    prof: { f: 0.92, m: 0.06, age: [0.46, 0.44, 0.08, 0.02], station: 0.82, drug: 0.55, hair: 0.55, beauty: 0.74 } },
+    prof: { f: 0.92, m: 0.06, age: [0.46, 0.44, 0.08, 0.02], station: 0.82, digital: 0.85, drug: 0.55, hair: 0.55, beauty: 0.74 } },
   { id: 'B', name: '30〜40代女性・ヘアケア関心', short: '30-40代女性・ヘアケア関心', share: 0.25, mix: [0.48, 0.22, 0.30],
-    prof: { f: 0.90, m: 0.08, age: [0.04, 0.46, 0.44, 0.06], station: 0.30, drug: 0.66, hair: 0.95, beauty: 0.52 } },
+    prof: { f: 0.90, m: 0.08, age: [0.04, 0.46, 0.44, 0.06], station: 0.30, digital: 0.75, drug: 0.66, hair: 0.95, beauty: 0.52 } },
   { id: 'C', name: '既存ブランド購入者', short: '既存ブランド購入者', share: 0.20, mix: [0.08, 0.92, 0.00],
-    prof: { f: 0.74, m: 0.23, age: [0.15, 0.35, 0.30, 0.20], station: 0.36, drug: 0.62, hair: 0.70, beauty: 0.36 } },
+    prof: { f: 0.74, m: 0.23, age: [0.15, 0.35, 0.30, 0.20], station: 0.36, digital: 0.65, drug: 0.62, hair: 0.70, beauty: 0.36 } },
   { id: 'D', name: '競合ブランド購入者', short: '競合ブランド購入者', share: 0.20, mix: [0.18, 0.07, 0.75],
-    prof: { f: 0.70, m: 0.27, age: [0.18, 0.32, 0.30, 0.20], station: 0.36, drug: 0.56, hair: 0.76, beauty: 0.40 } },
+    prof: { f: 0.70, m: 0.27, age: [0.18, 0.32, 0.30, 0.20], station: 0.36, digital: 0.70, drug: 0.56, hair: 0.76, beauty: 0.40 } },
   { id: 'E', name: 'その他', short: 'その他', share: 0.10, mix: [0.62, 0.25, 0.13],
-    prof: { f: 0.45, m: 0.50, age: [0.14, 0.20, 0.26, 0.40], station: 0.25, drug: 0.34, hair: 0.25, beauty: 0.20 } }
+    prof: { f: 0.45, m: 0.50, age: [0.14, 0.20, 0.26, 0.40], station: 0.25, digital: 0.45, drug: 0.34, hair: 0.25, beauty: 0.20 } }
 ];
 
 const MESSAGES = [
@@ -500,16 +508,19 @@ const SEG_INSIGHT = [
   { targets: ['broad'], msgs: ['aware'], trait: '特定の傾向が弱い層です。' }
 ];
 
-const PATTERNS = [
-  { key: 'tv', label: 'TVCMのみ' },
-  { key: 'dooh', label: 'DOOHのみ' },
-  { key: 'tvdooh', label: 'TVCM＋DOOH' },
-  { key: 'sig', label: '店内サイネージのみ' },
-  { key: 'tvsig', label: 'TVCM＋店内サイネージ' },
-  { key: 'doohsig', label: 'DOOH＋店内サイネージ' },
-  { key: 'all', label: 'TVCM＋DOOH＋店内サイネージ' },
-  { key: 'none', label: '広告接触機会を確認できなかった購入者' }
-];
+/* 広告接触パターン：店外媒体（TVCM・DOOH・デジタル広告）の組み合わせ × 店内サイネージ接触の有無 */
+const OUT_MEDIA = ['tv', 'dooh', 'dig'];
+const MEDIA_LABEL = { tv: 'TVCM', dooh: 'DOOH', dig: 'デジタル広告', sig: '店内サイネージ' };
+const OUT_COMBOS = [1, 2, 4, 3, 5, 6, 7].map(mask => {
+  const media = OUT_MEDIA.filter((m, i) => mask & (1 << i));
+  return { mask: mask, media: media, key: media.join('+') };
+});
+const PATTERNS = [].concat(
+  OUT_COMBOS.map(c => ({ key: c.key, label: c.media.map(m => MEDIA_LABEL[m]).join('＋') + (c.media.length === 1 ? 'のみ' : '') })),
+  [{ key: 'sig', label: '店内サイネージのみ' }],
+  OUT_COMBOS.map(c => ({ key: c.key + '+sig', label: c.media.map(m => MEDIA_LABEL[m]).join('＋') + '＋店内サイネージ' })),
+  [{ key: 'none', label: '広告接触機会を確認できなかった購入者' }]
+);
 
 /* =====================================================================
    2. 汎用ユーティリティ（数値の安全化）
@@ -543,8 +554,9 @@ function detectBonuses(plan) {
 
 function simulate(planIn, seed, round, ctx) {
   const C = CONFIG;
+  const T = C.BUDGET_TOTAL;
   const plan = {
-    tv: clamp(planIn.tv, 0, C.BUDGET_TOTAL), dooh: clamp(planIn.dooh, 0, C.BUDGET_TOTAL), sig: clamp(planIn.sig, 0, C.BUDGET_TOTAL),
+    tv: clamp(planIn.tv, 0, T), dooh: clamp(planIn.dooh, 0, T), dig: clamp(planIn.dig, 0, T), sig: clamp(planIn.sig, 0, T),
     msg: planIn.msg || 'aware', target: planIn.target || 'broad'
   };
   if (round === 1) plan.target = 'broad'; // ROUND 1は購入者データがないため、ターゲットは絞れない
@@ -558,65 +570,70 @@ function simulate(planIn, seed, round, ctx) {
   const insMul = (insT ? C.INSIGHT_TARGET : 1) * (insM ? C.INSIGHT_MSG : 1);
   if (insM) bonus.list.unshift('分析の示唆に合った広告メッセージ：購入率 ×' + C.INSIGHT_MSG);
   if (insT) bonus.list.unshift('分析の示唆に合ったターゲティング：購入率 ×' + C.INSIGHT_TARGET);
-  const reachTV = plan.tv / 100 * C.REACH_PER_MILLION.tv;
-  const reachDO = plan.dooh / 100 * C.REACH_PER_MILLION.dooh;
+  const reach = {};
+  OUT_MEDIA.forEach(m => { reach[m] = plan[m] / 100 * C.REACH_PER_MILLION[m]; });
   const sigCapacity = plan.sig / 100 * C.REACH_PER_MILLION.sig;
   const c = plan.sig > 0 ? Math.min(C.SIG_CONTACT_MAX, C.SIG_CONTACT_BASE * Math.sqrt(plan.sig / C.SIG_REF_BUDGET)) : 0;
-  const precDO = target.id === 'station' ? C.PRECISION.doohStation : C.PRECISION.dooh;
+  const precision = { tv: C.PRECISION.tv, dooh: target.id === 'station' ? C.PRECISION.doohStation : C.PRECISION.dooh, dig: C.PRECISION.dig };
 
   const pat = {};
   PATTERNS.forEach(p => { pat[p.key] = { key: p.key, label: p.label, contacts: 0, visitors: 0, buyers: 0, newB: 0, repB: 0, swB: 0, repurchasers: 0 }; });
-  const seg = SEGMENTS.map(s => ({ id: s.id, name: s.name, short: s.short, contacts: 0, visitors: 0, buyers: 0, newB: 0, repB: 0, swB: 0, repurchasers: 0, doohBuyers: 0, sigBuyers: 0 }));
-  let uniqueOut = 0, reachTVu = 0, reachDOu = 0;
+  const seg = SEGMENTS.map(s => ({ id: s.id, name: s.name, short: s.short, contacts: 0, visitors: 0, buyers: 0, newB: 0, repB: 0, swB: 0, repurchasers: 0, doohBuyers: 0, sigBuyers: 0, digBuyers: 0 }));
+  let uniqueOut = 0;
+  const reachU = { tv: 0, dooh: 0, dig: 0 };
 
   SEGMENTS.forEach((S, s) => {
     const pool = C.POPULATION * S.share;
-    const wTV = mixShare(S.share, target.dist[s], C.PRECISION.tv);
-    const wDO = mixShare(S.share, target.dist[s], precDO);
-    // 到達上限：TVCMは視聴者の85%、DOOHは駅前・生活動線を通る人（セグメントごとの駅前利用率）まで
-    const maxTV = C.TV_MAX_REACH, maxDO = S.prof.station;
-    const pTV = maxTV * (1 - Math.exp(-div(reachTV * wTV, pool * maxTV)));
-    const pDO = maxDO * (1 - Math.exp(-div(reachDO * wDO, pool * maxDO)));
-    const ex = { tv: pool * pTV * (1 - pDO), dooh: pool * pDO * (1 - pTV), tvdooh: pool * pTV * pDO };
-    uniqueOut += ex.tv + ex.dooh + ex.tvdooh;
-    reachTVu += pool * pTV; reachDOu += pool * pDO;
+    // 到達上限：TVCMは視聴者の85%、DOOHは駅前・生活動線を通る人、デジタル広告はネット利用者まで
+    const maxR = { tv: C.TV_MAX_REACH, dooh: S.prof.station, dig: S.prof.digital };
+    const pr = {};
+    OUT_MEDIA.forEach(m => {
+      const w = mixShare(S.share, target.dist[s], precision[m]);
+      pr[m] = maxR[m] * (1 - Math.exp(-div(reach[m] * w, pool * maxR[m])));
+      reachU[m] += pool * pr[m];
+    });
     const aff = msg.aff[s];
     const nv = noise(seed, round + ':visit:' + s);
     const nb = noise(seed, round + ':buy:' + s);
 
-    const visitRate = (o) => {
-      let r = C.BASE_VISIT * (o === 'tv' ? C.MEDIA_VISIT.tv : C.MEDIA_VISIT.dooh);
-      if (o === 'tvdooh') r *= C.OVERLAP.tvDoohVisit;
+    const visitRate = (combo) => {
+      let r = C.BASE_VISIT * Math.max.apply(null, combo.media.map(m => C.MEDIA_VISIT[m]));
+      r *= C.OVERLAP_VISIT[combo.key] || 1;
       r *= Math.sqrt(aff);
-      if (s === 4 && o !== 'dooh') r *= 1.2;                 // 「その他」はTVCMの認知に反応
-      if (bonus.station && o !== 'tv') r *= C.BONUS.stationDooh;
+      if (s === 4 && combo.media.indexOf('tv') >= 0) r *= 1.2;            // 「その他」はTVCMの認知に反応
+      if (bonus.station && combo.media.indexOf('dooh') >= 0) r *= C.BONUS.stationDooh;
+      if (target.id !== 'broad' && combo.media.indexOf('dig') >= 0) r *= C.DIG_TARGETED; // 絞り込んだデジタル広告は関心の高い人に届く
       if (s === hot) r *= C.HOT_VISIT;
       return clamp(r * nv, 0, 0.5);
     };
-    const buyRate = (o, sigSeen) => {
+    const buyRate = (combo, sigSeen) => {
       let r;
       if (sigSeen) {
-        r = C.BUY_SIG * ({ org: 1, tv: C.OVERLAP.tvSig, dooh: C.OVERLAP.doohSig, tvdooh: C.OVERLAP.allSig })[o];
-        if (s === 0 && o !== 'tv' && o !== 'org') r *= 1.15; // 20〜30代女性・駅前はDOOH＋サイネージの重複に反応
+        r = C.BUY_SIG * (combo ? (C.OVERLAP_SIG[combo.key] || 1) : 1);
+        if (s === 0 && combo && combo.media.indexOf('dooh') >= 0) r *= 1.15; // 20〜30代女性・駅前はDOOH＋サイネージの重複に反応
       } else {
-        r = o === 'org' ? C.BUY_UNLINKED : C.BUY_NOSIG;
+        r = combo ? C.BUY_NOSIG : C.BUY_UNLINKED;
       }
-      const msgSeen = sigSeen || o !== 'org';
+      const msgSeen = sigSeen || !!combo;
       if (s === hot) r *= C.HOT_BUY;
       if (msgSeen) { r *= aff * insMul; if (bonus.hair) r *= C.BONUS.hairFunc; }
       return clamp(r * nb, 0, 0.6);
     };
 
     const groups = [];
-    ['tv', 'dooh', 'tvdooh'].forEach(o => {
-      const v = ex[o] * visitRate(o);
-      const withSig = o === 'tv' ? 'tvsig' : (o === 'dooh' ? 'doohsig' : 'all');
-      groups.push({ pat: o, contacts: ex[o] * (1 - c), visitors: v * (1 - c), rate: buyRate(o, false), sig: false, msg: true, dooh: o !== 'tv' });
-      groups.push({ pat: withSig, contacts: ex[o] * c, visitors: v * c, rate: buyRate(o, true), sig: true, msg: true, dooh: o !== 'tv' });
+    OUT_COMBOS.forEach(combo => {
+      let prob = 1;
+      OUT_MEDIA.forEach(m => { prob *= combo.media.indexOf(m) >= 0 ? pr[m] : (1 - pr[m]); });
+      const ex = pool * prob;
+      seg[s].contacts += ex; uniqueOut += ex;
+      const v = ex * visitRate(combo);
+      const flags = { dooh: combo.media.indexOf('dooh') >= 0, dig: combo.media.indexOf('dig') >= 0 };
+      groups.push(Object.assign({ pat: combo.key, contacts: ex * (1 - c), visitors: v * (1 - c), rate: buyRate(combo, false), sig: false, msg: true }, flags));
+      groups.push(Object.assign({ pat: combo.key + '+sig', contacts: ex * c, visitors: v * c, rate: buyRate(combo, true), sig: true, msg: true }, flags));
     });
     const org = C.ORGANIC_SHOPPERS * S.share;
-    groups.push({ pat: 'sig', contacts: org * c, visitors: org * c, rate: buyRate('org', true), sig: true, msg: true, dooh: false });
-    groups.push({ pat: 'none', contacts: 0, visitors: org * (1 - c), rate: buyRate('org', false), sig: false, msg: false, dooh: false });
+    groups.push({ pat: 'sig', contacts: org * c, visitors: org * c, rate: buyRate(null, true), sig: true, msg: true, dooh: false, dig: false });
+    groups.push({ pat: 'none', contacts: 0, visitors: org * (1 - c), rate: buyRate(null, false), sig: false, msg: false, dooh: false, dig: false });
 
     const nr = noise(seed, round + ':rep:' + s);
     groups.forEach(g => {
@@ -642,9 +659,9 @@ function simulate(planIn, seed, round, ctx) {
       const Sg = seg[s];
       Sg.visitors += g.visitors; Sg.buyers += buyers; Sg.newB += nN; Sg.repB += nR; Sg.swB += nW; Sg.repurchasers += rep;
       if (g.dooh) Sg.doohBuyers += buyers;
+      if (g.dig) Sg.digBuyers += buyers;
       if (g.sig) Sg.sigBuyers += buyers;
     });
-    seg[s].contacts = ex.tv + ex.dooh + ex.tvdooh;
   });
 
   const patterns = PATTERNS.map(p => {
@@ -659,33 +676,34 @@ function simulate(planIn, seed, round, ctx) {
   const linked = patterns.filter(p => p.key !== 'none');
   const visitors = linked.reduce((a, p) => a + safe(p.visitors), 0);
   const buyersLinked = linked.reduce((a, p) => a + safe(p.buyers), 0);
-  const sigContacts = ['sig', 'tvsig', 'doohsig', 'all'].reduce((a, k) => a + safe(pat[k].visitors), 0);
+  const sigContacts = patterns.filter(p => p.key === 'sig' || /\+sig$/.test(p.key)).reduce((a, p) => a + safe(p.visitors), 0);
   const contacts = uniqueOut + safe(pat.sig.contacts);
   const newB = sum('newB'), repB = sum('repB'), swB = sum('swB'), repurchasers = sum('repurchasers');
   const repurchaseRate = div(repurchasers, buyers);
   const ltvPerBuyer = C.UNIT_PRICE * (1 + repurchaseRate * C.LTV_FUTURE_PURCHASES);
   const ltvTotal = buyers * ltvPerBuyer;
-  const spend = (plan.tv + plan.dooh + plan.sig) * 10000;
+  const spend = (plan.tv + plan.dooh + plan.dig + plan.sig) * 10000;
 
-  // 購入者の属性（セグメント構成から推定。接触経路によって行動属性が変化）
+  // 購入者の属性（セグメント構成から推定。接触経路によって行動属性・興味関心が変化）
   const w = seg.map(s => div(s.buyers, buyers));
   const wsum = (fn) => SEGMENTS.reduce((a, S, i) => a + w[i] * fn(S.prof, i), 0);
   const doohShareBuyers = div(seg.reduce((a, s) => a + s.doohBuyers, 0), buyers);
   const sigShareBuyers = div(seg.reduce((a, s) => a + s.sigBuyers, 0), buyers);
+  const digShareBuyers = div(seg.reduce((a, s) => a + s.digBuyers, 0), buyers);
   const f = wsum(p => p.f), m = wsum(p => p.m);
   const attrs = {
     gender: { f: f, m: m, o: Math.max(0, 1 - f - m) },
     age: [0, 1, 2, 3].map(i => wsum(p => p.age[i])),
     station: clamp(wsum(p => p.station) + 0.22 * (doohShareBuyers - 0.35), 0.05, 0.95),
     drug: clamp(wsum(p => p.drug) + 0.20 * (sigShareBuyers - 0.45), 0.05, 0.95),
-    hair: clamp(wsum(p => p.hair) * (plan.msg === 'func' ? 1.04 : 1), 0.05, 0.97),
-    beauty: clamp(wsum(p => p.beauty) * (plan.target === 'f2030' ? 1.05 : 1), 0.05, 0.95)
+    hair: clamp(wsum(p => p.hair) * (plan.msg === 'func' ? 1.04 : 1) + 0.05 * (digShareBuyers - 0.3), 0.05, 0.97),
+    beauty: clamp(wsum(p => p.beauty) * (plan.target === 'f2030' ? 1.05 : 1) + 0.08 * (digShareBuyers - 0.3), 0.05, 0.95)
   };
 
   return {
     round: round, plan: plan, bonuses: bonus.list,
     insight: { used: !!ins, seg: ins ? ins.seg : -1, segName: ins ? ins.segName : '', targetMatch: insT, msgMatch: insM }, sigContactRate: c, sigCapacity: sigCapacity,
-    reach: { tv: reachTVu, dooh: reachDOu, sig: sigCapacity },
+    reach: { tv: reachU.tv, dooh: reachU.dooh, dig: reachU.dig, sig: sigCapacity },
     contacts: contacts, visitors: visitors, sigContacts: sigContacts, buyersLinked: buyersLinked, buyers: buyers,
     unlinkedBuyers: safe(pat.none.buyers),
     newB: newB, repB: repB, swB: swB, repurchasers: repurchasers,
@@ -772,14 +790,16 @@ function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<
    5. ゲーム状態（1つのstateオブジェクトで管理）
    ===================================================================== */
 const ROUND_INFO = {
-  1: { title: '広告を届ける', goal: 'TVCM・DOOH・店内サイネージに予算を配分し、広告接触から来店・購買までのファネルを確認します。まだ購入者のデータがないため、配信ターゲットは絞れません。' },
+  1: { title: '広告を届ける', goal: 'TVCM・DOOH・デジタル広告・店内サイネージに予算を配分し、広告接触から来店・購買までのファネルを確認します。まだ購入者のデータがないため、配信ターゲットは絞れません。' },
   2: { title: '購入者を知る', goal: 'ROUND 1で購入につながった人の顧客分析から得た示唆を使って、ターゲティングと広告メッセージを選びます。示唆に合うほど、購入者が増えやすくなります。' },
   3: { title: '勝ちパターンを磨く', goal: 'ROUND 2の購入者分析で示唆を確かめ、ターゲティング・メッセージ・予算配分を磨きます。ROUND 1からの成果の変化を確認しましょう。' }
 };
 const STEPS = ['予算配分', 'メッセージ', 'ターゲット', '配信', '来店・購買結果', '購買者分析', '次回施策'];
 
 function newSeed() { return ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) || 1; }
-function defaultPlan() { return { tv: 400, dooh: 300, sig: 300, msg: null, target: 'broad' }; }
+const BUDGET_KEYS = ['tv', 'dooh', 'dig', 'sig'];
+function budgetTotal(p) { return BUDGET_KEYS.reduce((a, k) => a + safe(p[k]), 0); }
+function defaultPlan() { return { tv: 300, dooh: 250, dig: 200, sig: 250, msg: null, target: 'broad' }; }
 function createState() {
   const seed = newSeed();
   return {
@@ -813,20 +833,26 @@ function setBudget(key, value) {
   if (!plan) return;
   const T = CONFIG.BUDGET_TOTAL, step = CONFIG.BUDGET_STEP;
   const v = Math.round(clamp(value, 0, T) / step) * step;
-  const others = ['tv', 'dooh', 'sig'].filter(k => k !== key);
+  // 動かした媒体以外を、いまの比率を保ったまま調整して合計を常に1,000万円にする
+  const others = BUDGET_KEYS.filter(k => k !== key);
   const remain = T - v;
-  const a = plan[others[0]], b = plan[others[1]];
-  let na, nb;
-  if (a + b <= 0) { na = Math.round(remain / 2 / step) * step; nb = remain - na; }
-  else { na = Math.round(remain * a / (a + b) / step) * step; na = clamp(na, 0, remain); nb = remain - na; }
-  plan[key] = v; plan[others[0]] = na; plan[others[1]] = nb;
+  const cur = others.map(k => safe(plan[k]));
+  const curSum = cur.reduce((x, y) => x + y, 0);
+  let left = remain;
+  others.forEach((k, i) => {
+    if (i === others.length - 1) { plan[k] = left; return; }
+    const share = curSum > 0 ? cur[i] / curSum : 1 / others.length;
+    const nv = clamp(Math.round(remain * share / step) * step, 0, left);
+    plan[k] = nv; left -= nv;
+  });
+  plan[key] = v;
 }
 function deliver() {
   if (state.busy) return;
   const r = state.round;
   const plan = state.plans[r];
   if (!plan || !plan.msg || !plan.target) return;
-  if (plan.tv + plan.dooh + plan.sig !== CONFIG.BUDGET_TOTAL) return;
+  if (budgetTotal(plan) !== CONFIG.BUDGET_TOTAL) return;
   if (state.results[r]) { go('run', r); return; }  // 二重計算しない
   state.busy = true;
   state.results[r] = simulate(plan, state.seed, r, { hot: state.hot, insight: r >= 2 ? getInsight(r) : null });
@@ -838,7 +864,7 @@ function nextRound() {
   if (state.round >= 3) return;
   const prev = state.plans[state.round];
   state.round += 1;
-  if (!state.plans[state.round]) state.plans[state.round] = { tv: prev.tv, dooh: prev.dooh, sig: prev.sig, msg: null, target: null };
+  if (!state.plans[state.round]) state.plans[state.round] = { tv: prev.tv, dooh: prev.dooh, dig: prev.dig, sig: prev.sig, msg: null, target: null };
   go('plan', state.round);
 }
 function restart() {
@@ -852,11 +878,15 @@ function restart() {
    7. リテール博士のコメント・ヒント生成
    ===================================================================== */
 function bestPattern(res) {
-  const cand = res.patterns.filter(p => p.key !== 'none' && p.key !== 'sig' && p.visitors >= 40);
+  const cand = res.patterns.filter(p => p.key !== 'none' && p.key !== 'sig' && p.visitors >= 80);
   if (!cand.length) return null;
   return cand.slice().sort((a, b) => b.buyRate - a.buyRate)[0];
 }
 function topSegment(res) { return res.segments.slice().sort((a, b) => b.buyers - a.buyers)[0]; }
+function budgetChips(p) {
+  return '<span class="chip navy">TVCM ' + fmt.man(p.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(p.dooh) + '</span><span class="chip sky">デジタル ' + fmt.man(p.dig) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(p.sig) + '</span>';
+}
+function budgetText(p) { return 'TV ' + p.tv + ' / DOOH ' + p.dooh + ' / デジタル ' + p.dig + ' / サイネージ ' + p.sig + '万円'; }
 function msgName(id) { const m = MESSAGES.find(x => x.id === id); return m ? m.name : '—'; }
 function targetName(id) { const t = TARGETS.find(x => x.id === id); return t ? t.name : '—'; }
 
@@ -878,13 +908,15 @@ function doctorComments(res, phase) {
     if (bp) out.push({ t: bp.label + 'の人は、来店後の購入率が ' + fmt.pct(bp.buyRate) + ' と最も高くなりました。', c: 'gold' });
     if (plan.sig < 150) out.push({ t: '店内サイネージの予算が少なく、来店後の「ひと押し」が不足しています。', c: 'warn' });
     if (plan.tv >= 650) out.push({ t: 'TVCM中心の配分で接触人数は多いものの、来店への転換は伸びにくい構成です。', c: 'warn' });
+    if (res.round === 1 && plan.dig > 0) out.push({ t: 'デジタル広告はターゲティングが強みですが、ROUND 1は配信先を絞れないため力を発揮しきれていません。' });
+    if (res.round >= 2 && plan.dig >= 250 && res.insight.targetMatch) out.push({ t: 'ターゲティング精度の高いデジタル広告で、分析で見えた顧客層に効率よく届けられました。', c: 'gold' });
     if (res.bonuses.length) out.push({ t: 'メッセージとターゲットの相性が結果を押し上げています。' });
   } else {
     const SI = segmentInsight(res);
     out.push({ t: '接触機会あたりの購入が特に多かったのは「' + SI.segName + '」でした（購買指数 ' + SI.index.toFixed(2) + '）。' + (res.round < 3 ? '次のラウンドは、この層に届けるターゲティングとメッセージを考えましょう。' : ''), c: 'gold' });
     const shares = [['新規購入', res.newRate], ['リピート購入', res.repShare], ['ブランドスイッチ候補', res.swRate]].sort((a, b) => b[1] - a[1]);
     out.push({ t: '今回の購入者は、' + shares[0][0] + 'の比率が最も高いようです（' + fmt.pct(shares[0][1]) + '）。' });
-    const dsig = res.patterns.find(p => p.key === 'doohsig');
+    const dsig = res.patterns.find(p => p.key === 'dooh+sig');
     const dOnly = res.patterns.find(p => p.key === 'dooh');
     if (dsig && dOnly && dsig.visitors > 30 && dOnly.visitors > 30 && dsig.buyRate > dOnly.buyRate * 1.5) {
       out.push({ t: 'DOOHと店内サイネージの両方に接触した人は、来店後の購入率が高くなりました（' + fmt.pct(dsig.buyRate) + ' vs DOOHのみ ' + fmt.pct(dOnly.buyRate) + '）。', c: 'gold' });
@@ -909,12 +941,13 @@ function nextHints(res) {
   h.push({ t: '購入につながりやすいのは「' + SI.segName + '」', d: SI.trait + '（購買指数 ' + SI.index.toFixed(2) + '、全体平均＝1.00）この層に届くターゲットと、響くメッセージを選びましょう。' });
   if (a.hair >= 0.6 && !(plan.target === 'haircare' && plan.msg === 'func')) h.push({ t: 'ヘアケア関心層が ' + fmt.pct(a.hair, 0), d: '購入者の多くはヘアケアへの関心が高い層です。商品の違いを伝えるメッセージと相性がよいかもしれません。' });
   if (a.station >= 0.45 && plan.dooh < 400) h.push({ t: '平日夕方の駅前利用が ' + fmt.pct(a.station, 0), d: '駅前の生活動線で接触できるDOOHを厚くし、時間帯を絞る余地があります。' });
-  const dsig = res.patterns.find(p => p.key === 'doohsig');
+  const dsig = res.patterns.find(p => p.key === 'dooh+sig');
   if (dsig && dsig.buyRate > 0.15) h.push({ t: 'DOOH＋店内サイネージの購入率が ' + fmt.pct(dsig.buyRate), d: '店外で接触した人に棚前で再認知させると購入につながりやすい傾向です。2媒体の重複を意識した配分を。' });
   if (res.swRate >= 0.25 && plan.msg !== 'func') h.push({ t: 'スイッチ候補が ' + fmt.pct(res.swRate, 0), d: '競合ブランドから移ってきた購入者がいます。機能の違いを具体的に伝えると、さらに増やせる可能性があります。' });
   if (res.newRate >= 0.4 && plan.msg !== 'trial') h.push({ t: '新規購入が ' + fmt.pct(res.newRate, 0), d: '新規購入者が多い層です。初回購入のきっかけをつくる訴求と組み合わせる手があります。' });
   if (res.repShare >= 0.4 && plan.msg !== 'cont') h.push({ t: 'リピート購入が ' + fmt.pct(res.repShare, 0), d: '既存購入者には、使い続ける理由を伝えると再購入率とLTVが伸びやすくなります。' });
   if (plan.sig < 200) h.push({ t: '店内サイネージを見直す', d: '来店者のうちサイネージに接触したのは ' + fmt.pct(res.sigRate, 0) + '。棚前での再認知が不足しています。' });
+  if (plan.dig < 250) h.push({ t: 'デジタル広告で示唆を生かす', d: 'デジタル広告はターゲティング精度が高く、分析で見えた顧客層に絞って届けやすい媒体です。ROUND 2からは配信先を絞れます。' });
   if (plan.tv >= 600) h.push({ t: 'TVCMの比重が高い', d: '接触人数は多いものの、ターゲット精度は低めです。来店・購買までのつながりで配分を考えましょう。' });
   return h.slice(0, 5);
 }
@@ -1030,7 +1063,7 @@ function screenHead(eyebrow, title, lead, right) {
 
 /* ---------- Intro / Tutorial ---------- */
 const TUTORIAL = [
-  { t: '広告を届ける', d: 'TVCM、DOOH、店内サイネージに予算を配分します。', chips: ['<span class="chip navy">TVCM</span>', '<span class="chip mint">DOOH</span>', '<span class="chip coral">店内サイネージ</span>'] },
+  { t: '広告を届ける', d: 'TVCM、DOOH、デジタル広告、店内サイネージに予算を配分します。', chips: ['<span class="chip navy">TVCM</span>', '<span class="chip mint">DOOH</span>', '<span class="chip sky">デジタル広告</span>', '<span class="chip coral">店内サイネージ</span>'] },
   { t: '来店と購買を確かめる', d: '接触した生活者が、来店し、商品を購入したかを確認します。', chips: ['<span class="chip">広告接触</span>', '<span class="chip">→ 来店</span>', '<span class="chip coral">→ 購入</span>'] },
   { t: '購入者を深く知る', d: '新規・リピート・スイッチ候補や購入者像を分析します。ROUND 2からは、その示唆を使ってターゲティングできます。', chips: ['<span class="chip mint">● 新規</span>', '<span class="chip navy">■ リピート</span>', '<span class="chip coral">◆ スイッチ候補</span>', '<span class="chip gold">LTV</span>'] }
 ];
@@ -1089,6 +1122,7 @@ function renderPlan() {
   const media = [
     { k: 'tv', name: 'TVCM', ico: 'TV', cls: 'ico-tv', tags: ['広い認知', '接触人数 多', 'ターゲット精度 低め', '来店転換 中'] },
     { k: 'dooh', name: 'DOOH', ico: 'DO', cls: 'ico-dooh', tags: ['駅前・生活動線', 'エリア・時間帯を指定', '来店と相性◎'] },
+    { k: 'dig', name: 'デジタル広告', ico: 'DG', cls: 'ico-dig', tags: r === 1 ? ['SNS・検索・動画', '接触人数 中', 'ROUND 1は配信先を絞れない'] : ['SNS・検索・動画', 'ターゲティング精度 高', '分析の示唆を生かしやすい'] },
     { k: 'sig', name: '店内サイネージ', ico: 'SG', cls: 'ico-sig', tags: ['商品棚の近く', '接触人数 少', '購入転換 高', '重複接触で効果増'] }
   ];
   const ins = r > 1 ? getInsight(r) : null;
@@ -1111,7 +1145,7 @@ function renderPlan() {
           '<div class="media-tags">' + m.tags.map(t => '<span class="chip">' + t + '</span>').join('') + '</div>' +
           '<div class="media-reach" id="reach-' + m.k + '"></div>' +
         '</div>').join('') +
-        '<div class="alloc-bar" aria-hidden="true"><span id="ab-tv" style="background:var(--navy-2)"></span><span id="ab-dooh" style="background:var(--mint-ink)"></span><span id="ab-sig" style="background:var(--coral)"></span></div>' +
+        '<div class="alloc-bar" aria-hidden="true"><span id="ab-tv" style="background:var(--navy-2)"></span><span id="ab-dooh" style="background:var(--mint-ink)"></span><span id="ab-dig" style="background:var(--sky)"></span><span id="ab-sig" style="background:var(--coral)"></span></div>' +
         '<div class="actions" style="margin-top:12px"><button class="btn btn-sm" data-action="equal">均等配分</button><button class="btn btn-sm" data-action="reset-budget">リセット</button></div>' +
       '</div>' +
       '<div class="panel"><h3><span class="stepno">2</span>広告メッセージ</h3>' +
@@ -1137,8 +1171,8 @@ function updatePlanReadouts() {
   const r = state.viewRound;
   const plan = state.plans[r];
   if (!plan) return;
-  const total = plan.tv + plan.dooh + plan.sig;
-  ['tv', 'dooh', 'sig'].forEach(k => {
+  const total = budgetTotal(plan);
+  BUDGET_KEYS.forEach(k => {
     const sl = $('#sl-' + k); if (sl && Number(sl.value) !== plan[k]) sl.value = plan[k];
     if (sl) sl.setAttribute('aria-valuetext', plan[k] + '万円');
     const v = $('#val-' + k); if (v) v.textContent = fmt.num(plan[k]);
@@ -1152,7 +1186,7 @@ function updatePlanReadouts() {
   const badge = $('#sumBadge'); if (badge) badge.textContent = '合計 ' + fmt.man(total) + ' / ' + fmt.man(CONFIG.BUDGET_TOTAL);
   const sum = $('#planSummary');
   if (sum) {
-    sum.innerHTML = '<span class="chip navy">TVCM ' + fmt.man(plan.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(plan.dooh) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(plan.sig) + '</span>' +
+    sum.innerHTML = budgetChips(plan) +
       '<span class="chip">メッセージ：' + (plan.msg ? msgName(plan.msg) : '未選択') + '</span><span class="chip">ターゲット：' + (plan.target ? targetName(plan.target) : '未選択') + '</span>';
   }
   const btn = $('#deliverBtn');
@@ -1186,7 +1220,7 @@ function renderRun() {
   stage.innerHTML =
     '<section class="screen">' +
     screenHead('ROUND ' + r + ' ・ ' + ROUND_INFO[r].title, '生活者の動きを追跡する',
-      'TVCM ' + fmt.man(res.plan.tv) + ' ／ DOOH ' + fmt.man(res.plan.dooh) + ' ／ 店内サイネージ ' + fmt.man(res.plan.sig) + '　・　' + msgName(res.plan.msg) + ' × ' + targetName(res.plan.target),
+      'TVCM ' + fmt.man(res.plan.tv) + ' ／ DOOH ' + fmt.man(res.plan.dooh) + ' ／ デジタル広告 ' + fmt.man(res.plan.dig) + ' ／ 店内サイネージ ' + fmt.man(res.plan.sig) + '　・　' + msgName(res.plan.msg) + ' × ' + targetName(res.plan.target),
       '<button class="btn btn-sm no-print" data-action="skip-anim" id="skipBtn">アニメーションをスキップ</button>') +
     '<div class="panel funnel-panel">' +
       '<div class="stage-labels">' + STAGE_DEFS.map(s => '<div><span class="k">' + s.k + '</span>' + s.t + '</div>').join('') + '</div>' +
@@ -1219,7 +1253,7 @@ function showRunResults(res, locked) {
   box.innerHTML =
     '<div class="screen" style="gap:14px">' +
     '<div class="kpis">' +
-      kpi('', '広告接触者数', '<span data-count="' + res.contacts + '">0</span><small>人</small>', 'TVCM・DOOH・店内サイネージ') +
+      kpi('', '広告接触者数', '<span data-count="' + res.contacts + '">0</span><small>人</small>', 'TVCM・DOOH・デジタル・サイネージ') +
       kpi('mint', '来店者数', '<span data-count="' + res.visitors + '">0</span><small>人</small>', '来店率 ' + fmt.pct(res.visitRate, 2)) +
       kpi('', '店内サイネージ接触者数', '<span data-count="' + res.sigContacts + '">0</span><small>人</small>', '来店者の ' + fmt.pct(res.sigRate, 0) + ' が接触') +
       kpi('coral', '購入者数', '<span data-count="' + res.buyers + '">0</span><small>人</small>', 'うち広告接触あり ' + fmt.people(res.buyersLinked)) +
@@ -1483,15 +1517,25 @@ function analysisContent(k, res) {
   }
   if (k === 'path') {
     const bp = bestPattern(res);
-    const maxB = Math.max.apply(null, res.patterns.map(p => p.buyers).concat([1]));
+    // 購入者が少ない組み合わせ（購入者の1.5%未満）は「その他の組み合わせ」にまとめて表示
+    const minB = res.buyers * 0.015;
+    const shown = res.patterns.filter(p => p.key === 'none' || p.key === 'sig' || p.buyers >= minB || (bp && bp.key === p.key));
+    const rest = res.patterns.filter(p => shown.indexOf(p) < 0);
+    if (rest.length) {
+      const o = { key: 'other', label: 'その他の組み合わせ（' + rest.length + '種）', contacts: 0, visitors: 0, buyers: 0, newB: 0, repurchasers: 0 };
+      rest.forEach(p => { o.contacts += p.contacts; o.visitors += p.visitors; o.buyers += p.buyers; o.newB += p.newB; o.repurchasers += p.repurchasers; });
+      Object.assign(o, { visitRate: div(o.visitors, o.contacts), buyRate: div(o.buyers, o.visitors), newRate: div(o.newB, o.buyers), repRate: div(o.repurchasers, o.buyers) });
+      shown.splice(shown.length - 1, 0, o);
+    }
+    const maxB = Math.max.apply(null, shown.map(p => p.buyers).concat([1]));
     return '<div class="path-table-wrap"><table class="data"><thead><tr><th scope="col">接触パターン</th><th scope="col">推定接触者数</th><th scope="col">来店者数</th><th scope="col">購入者数</th><th scope="col">来店率</th><th scope="col">購入率</th><th scope="col">新規購入率</th><th scope="col">再購入率</th></tr></thead><tbody>' +
-      res.patterns.map(p => '<tr class="' + (bp && bp.key === p.key ? 'best' : '') + '"><td class="path">' + (bp && bp.key === p.key ? '★ ' : '') + esc(p.label) + '</td>' +
+      shown.map(p => '<tr class="' + (bp && bp.key === p.key ? 'best' : '') + '"><td class="path">' + (bp && bp.key === p.key ? '★ ' : '') + esc(p.label) + '</td>' +
         '<td>' + (p.key === 'none' ? '—' : fmt.num(p.contacts)) + '</td>' +
         '<td>' + fmt.num(p.visitors) + '</td>' +
         '<td><span class="mini" style="width:' + Math.round(div(p.buyers, maxB) * 50) + 'px"></span>' + fmt.num(p.buyers) + '</td>' +
         '<td>' + (p.key === 'none' ? '—' : (p.key === 'sig' ? '店内接触' : fmt.pct(p.visitRate, 2))) + '</td>' +
         '<td>' + fmt.pct(p.buyRate) + '</td><td>' + fmt.pct(p.newRate) + '</td><td>' + fmt.pct(p.repRate) + '</td></tr>').join('') +
-      '</tbody></table></div><p class="note">★＝来店後の購入率が最も高い経路。店内サイネージを含む経路の推定接触者数は、店外広告接触者のうち来店時にサイネージ接触が見込まれる人数で按分しています。新規購入率はスイッチ候補を除く新規購入者の比率です。</p>';
+      '</tbody></table></div><p class="note">★＝来店後の購入率が最も高い経路。購入者が全体の1.5%未満の組み合わせは「その他の組み合わせ」にまとめています。店内サイネージを含む経路の推定接触者数は、店外広告接触者のうち来店時にサイネージ接触が見込まれる人数で按分しています。新規購入率はスイッチ候補を除く新規購入者の比率です。</p>';
   }
   if (k === 'repurchase') {
     const rt = repurchaseByType(res);
@@ -1571,7 +1615,7 @@ function renderNext() {
       '<div class="panel"><h3>次回施策へのヒント</h3><div class="hint-list">' + hints.map((h, i) => '<div class="hint"><span class="hi" aria-hidden="true">' + (i + 1) + '</span><div><b>' + esc(h.t) + '</b><span>' + esc(h.d) + '</span></div></div>').join('') + '</div></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:14px">' +
         doctorBlock([{ t: '分析結果に合ったターゲットとメッセージを選ぶと、成果が伸びやすくなります。' }, { t: '逆に、分析と合わない戦略では改善しないこともあります。データの傾向をよく見て選びましょう。', c: 'warn' }]) +
-        '<div class="panel"><h3>ROUND ' + r + 'のプラン</h3><div class="summary-line" style="margin-top:8px"><span class="chip navy">TVCM ' + fmt.man(res.plan.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(res.plan.dooh) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(res.plan.sig) + '</span><span class="chip">' + msgName(res.plan.msg) + '</span><span class="chip">' + targetName(res.plan.target) + '</span></div></div>' +
+        '<div class="panel"><h3>ROUND ' + r + 'のプラン</h3><div class="summary-line" style="margin-top:8px">' + budgetChips(res.plan) + '<span class="chip">' + msgName(res.plan.msg) + '</span><span class="chip">' + targetName(res.plan.target) + '</span></div></div>' +
       '</div>' +
     '</div>' +
     '<div class="actions between no-print"><button class="btn btn-ghost" data-action="view-analysis" data-round="' + r + '">分析に戻る</button><button class="btn btn-accent btn-lg" data-action="next-round">ROUND ' + (r + 1) + 'へ進む</button></div>' +
@@ -1606,7 +1650,7 @@ function renderFinal() {
     screenHead('FINAL RESULT', '施策前後の比較とスコア', 'ROUND 1の戦略と、分析を踏まえたROUND 3の戦略を比べます。') +
     '<div class="final-grid">' +
       '<div class="panel"><h3>ROUND 1 と ROUND 3 の比較</h3>' +
-        '<p class="small muted" style="margin:4px 0 10px">ROUND 1：' + msgName(r1.plan.msg) + ' × ' + targetName(r1.plan.target) + '（TV ' + r1.plan.tv + ' / DOOH ' + r1.plan.dooh + ' / サイネージ ' + r1.plan.sig + '万円）<br>ROUND 3：' + msgName(r3.plan.msg) + ' × ' + targetName(r3.plan.target) + '（TV ' + r3.plan.tv + ' / DOOH ' + r3.plan.dooh + ' / サイネージ ' + r3.plan.sig + '万円）</p>' +
+        '<p class="small muted" style="margin:4px 0 10px">ROUND 1：' + msgName(r1.plan.msg) + ' × ' + targetName(r1.plan.target) + '（' + budgetText(r1.plan) + '）<br>ROUND 3：' + msgName(r3.plan.msg) + ' × ' + targetName(r3.plan.target) + '（' + budgetText(r3.plan) + '）</p>' +
         cmpTable(r1, r3, 'ROUND 1', 'ROUND 3') + '</div>' +
       '<div class="panel" id="scorePanel"><h3>最終スコア</h3>' +
         '<div class="score-hero" style="margin-top:10px">' + scoreRingSvg(sc.total) + '<div class="score-title"><span class="eyebrow">称号</span><span class="rank">' + sc.title + '</span><span class="small muted">ROUND 3の成果で評価</span></div></div>' +
@@ -1646,7 +1690,7 @@ function renderReport() {
   const ageLabs = ['20代', '30代', '40代', '50代以上'];
   const topAge = a.age.indexOf(Math.max.apply(null, a.age));
   const rowsDef = [
-    ['TVCM 予算', x => fmt.man(x.plan.tv)], ['DOOH 予算', x => fmt.man(x.plan.dooh)], ['店内サイネージ 予算', x => fmt.man(x.plan.sig)],
+    ['TVCM 予算', x => fmt.man(x.plan.tv)], ['DOOH 予算', x => fmt.man(x.plan.dooh)], ['デジタル広告 予算', x => fmt.man(x.plan.dig)], ['店内サイネージ 予算', x => fmt.man(x.plan.sig)],
     ['ターゲット', x => targetName(x.plan.target) + (x.round === 1 ? '（固定）' : '')], ['広告メッセージ', x => msgName(x.plan.msg)],
     ['分析の示唆との一致', x => !x.insight.used ? '—' : ((x.insight.targetMatch ? 'ターゲット◎' : 'ターゲット×') + ' / ' + (x.insight.msgMatch ? 'メッセージ◎' : 'メッセージ×'))],
     ['広告接触者数', x => fmt.num(x.contacts)], ['来店者数', x => fmt.num(x.visitors)], ['店内サイネージ接触者数', x => fmt.num(x.sigContacts)],
@@ -1692,8 +1736,8 @@ document.addEventListener('click', (e) => {
     case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
     case 'tut-prev': state.tutorial = clamp(state.tutorial - 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-prev"]:not([disabled]),[data-action="tut-next"]'); break;
     case 'start': go('plan', 1); break;
-    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { p.tv = 340; p.dooh = 330; p.sig = 330; updatePlanReadouts(); } break; }
-    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.sig = d.sig; updatePlanReadouts(); } break; }
+    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { p.tv = 250; p.dooh = 250; p.dig = 250; p.sig = 250; updatePlanReadouts(); } break; }
+    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.dig = d.dig; p.sig = d.sig; updatePlanReadouts(); } break; }
     case 'deliver': el.disabled = true; deliver(); break;
     case 'skip-anim': if (anim.finish) anim.finish(); break;
     case 'analyze': go('analysis', state.viewRound); break;
