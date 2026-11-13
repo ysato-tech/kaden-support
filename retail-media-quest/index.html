@@ -170,6 +170,15 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .opt:hover .box{border-color:var(--navy-2)}
 .opt input:checked + .box{border-color:var(--navy);background:#eef2f8;box-shadow:inset 0 0 0 1px var(--navy)}
 .opt input:focus-visible + .box{outline:3px solid var(--focus);outline-offset:2px}
+.opt.is-locked{cursor:not-allowed}
+.opt.is-locked .box{opacity:.45;background:var(--surface-2)}
+.opt.is-locked:hover .box{border-color:var(--line)}
+.insight-box{display:grid;grid-template-columns:1fr minmax(0,38ch);gap:8px 24px;align-items:center;background:var(--gold-soft);border:1px solid #ead59e;border-radius:10px;padding:14px 18px}
+.insight-box .ins-main{font-size:16px;color:var(--navy);display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0}
+.insight-box .eyebrow{color:var(--gold-ink)}
+.seg-index .hbar{grid-template-columns:minmax(150px,auto) 1fr 52px}
+.seg-index .hbar.top span:first-child{font-weight:800;color:var(--navy)}
+@media (max-width:760px){.insight-box{grid-template-columns:1fr}.seg-index .hbar{grid-template-columns:110px 1fr 46px}}
 .radio-ind{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted);flex:none;margin-top:3px;display:grid;place-items:center}
 .opt input:checked + .box .radio-ind{border-color:var(--navy)}
 .opt input:checked + .box .radio-ind::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--navy)}
@@ -434,13 +443,18 @@ const CONFIG = {
   OVERLAP: { tvDoohVisit: 1.25, doohSig: 1.40, tvSig: 1.25, allSig: 1.70 },
   BONUS: { f2030Trial: 1.25, hairFunc: 1.30, newcandTrial: 1.35, repeatCont: 1.40, stationDooh: 1.30, stationDoohShare: 0.40, competitorFunc: 1.30 },
   NOISE: 0.05,                 // ±5%のランダム変動
+  HOT_SEGMENTS: [0, 1, 3],     // ゲームごとに1つ選ばれる「実は購入につながりやすい顧客層」の候補
+  HOT_BUY: 1.7,                // その層の購入率の高さ
+  HOT_VISIT: 1.2,              // その層の来店率の高さ
+  INSIGHT_TARGET: 1.22,        // 分析の示唆に合ったターゲティング：購入率の倍率（ROUND 2以降）
+  INSIGHT_MSG: 1.18,           // 分析の示唆に合った広告メッセージ：購入率の倍率（ROUND 2以降）
   REPURCHASE_BASE: { new: 0.20, rep: 0.46, sw: 0.17 }, // 90日以内の再購入率（基準）
   REPURCHASE_SIG: 1.10,        // 店内サイネージ接触による再購入率の上乗せ
   UNIT_PRICE: 3300,            // 商品単価（円・シャンプー＆トリートメント）
   LTV_FUTURE_PURCHASES: 5,   // 90日以内に再購入した人の、その後12か月の平均追加購入回数
   SCORE: {
-    visit: [5500, 11500], buyers: [600, 1550], newB: [250, 700], sw: [120, 520],
-    repurchase: [0.22, 0.40], roas: [0.5, 1.4]
+    visit: [6000, 12500], buyers: [900, 2700], newB: [350, 1150], sw: [150, 850],
+    repurchase: [0.22, 0.40], roas: [0.6, 2.2]
   }
 };
 
@@ -475,6 +489,15 @@ const TARGETS = [
   { id: 'haircare', name: 'ヘアケア関心層', desc: '興味関心データで絞り込み', dist: [0.15, 0.48, 0.07, 0.25, 0.05] },
   { id: 'newcand', name: 'ブランド新規購入候補', desc: 'MINTÉ未購入のカテゴリー購入者', dist: [0.27, 0.25, 0.00, 0.43, 0.05] },
   { id: 'repeat', name: '過去購入者・リピート候補', desc: 'MINTÉの購入履歴がある人', dist: [0.06, 0.06, 0.76, 0.06, 0.06] }
+];
+
+/* 購入者分析で「購入につながりやすい」と分かった顧客層ごとの示唆（ROUND 2以降のターゲティングに使う） */
+const SEG_INSIGHT = [
+  { targets: ['f2030', 'station'], msgs: ['trial'], trait: '平日夕方に駅前を通る20〜30代女性が中心。初めて試すきっかけに反応しやすい層です。' },
+  { targets: ['haircare'], msgs: ['func'], trait: 'ヘアケアへの関心が高い30〜40代女性が中心。洗い上がりなど、機能の違いを重視する層です。' },
+  { targets: ['repeat'], msgs: ['cont'], trait: 'MINTÉを購入したことがある人が中心。使い続ける理由に反応しやすい層です。' },
+  { targets: ['newcand', 'haircare'], msgs: ['func', 'trial'], trait: '前回は競合ブランドを買っていた人が中心。商品の違いや、試しやすさに反応しやすい層です。' },
+  { targets: ['broad'], msgs: ['aware'], trait: '特定の傾向が弱い層です。' }
 ];
 
 const PATTERNS = [
@@ -518,15 +541,23 @@ function detectBonuses(plan) {
   return b;
 }
 
-function simulate(planIn, seed, round) {
+function simulate(planIn, seed, round, ctx) {
   const C = CONFIG;
   const plan = {
     tv: clamp(planIn.tv, 0, C.BUDGET_TOTAL), dooh: clamp(planIn.dooh, 0, C.BUDGET_TOTAL), sig: clamp(planIn.sig, 0, C.BUDGET_TOTAL),
     msg: planIn.msg || 'aware', target: planIn.target || 'broad'
   };
+  if (round === 1) plan.target = 'broad'; // ROUND 1は購入者データがないため、ターゲットは絞れない
   const msg = MESSAGES.find(m => m.id === plan.msg) || MESSAGES[0];
   const target = TARGETS.find(t => t.id === plan.target) || TARGETS[0];
   const bonus = detectBonuses(plan);
+  const hot = ctx && typeof ctx.hot === 'number' ? ctx.hot : -1;
+  const ins = (round >= 2 && ctx && ctx.insight) ? ctx.insight : null;
+  const insT = !!(ins && ins.targets.indexOf(plan.target) >= 0);
+  const insM = !!(ins && ins.msgs.indexOf(plan.msg) >= 0);
+  const insMul = (insT ? C.INSIGHT_TARGET : 1) * (insM ? C.INSIGHT_MSG : 1);
+  if (insM) bonus.list.unshift('分析の示唆に合った広告メッセージ：購入率 ×' + C.INSIGHT_MSG);
+  if (insT) bonus.list.unshift('分析の示唆に合ったターゲティング：購入率 ×' + C.INSIGHT_TARGET);
   const reachTV = plan.tv / 100 * C.REACH_PER_MILLION.tv;
   const reachDO = plan.dooh / 100 * C.REACH_PER_MILLION.dooh;
   const sigCapacity = plan.sig / 100 * C.REACH_PER_MILLION.sig;
@@ -559,6 +590,7 @@ function simulate(planIn, seed, round) {
       r *= Math.sqrt(aff);
       if (s === 4 && o !== 'dooh') r *= 1.2;                 // 「その他」はTVCMの認知に反応
       if (bonus.station && o !== 'tv') r *= C.BONUS.stationDooh;
+      if (s === hot) r *= C.HOT_VISIT;
       return clamp(r * nv, 0, 0.5);
     };
     const buyRate = (o, sigSeen) => {
@@ -570,7 +602,8 @@ function simulate(planIn, seed, round) {
         r = o === 'org' ? C.BUY_UNLINKED : C.BUY_NOSIG;
       }
       const msgSeen = sigSeen || o !== 'org';
-      if (msgSeen) { r *= aff; if (bonus.hair) r *= C.BONUS.hairFunc; }
+      if (s === hot) r *= C.HOT_BUY;
+      if (msgSeen) { r *= aff * insMul; if (bonus.hair) r *= C.BONUS.hairFunc; }
       return clamp(r * nb, 0, 0.6);
     };
 
@@ -650,7 +683,8 @@ function simulate(planIn, seed, round) {
   };
 
   return {
-    round: round, plan: plan, bonuses: bonus.list, sigContactRate: c, sigCapacity: sigCapacity,
+    round: round, plan: plan, bonuses: bonus.list,
+    insight: { used: !!ins, seg: ins ? ins.seg : -1, segName: ins ? ins.segName : '', targetMatch: insT, msgMatch: insM }, sigContactRate: c, sigCapacity: sigCapacity,
     reach: { tv: reachTVu, dooh: reachDOu, sig: sigCapacity },
     contacts: contacts, visitors: visitors, sigContacts: sigContacts, buyersLinked: buyersLinked, buyers: buyers,
     unlinkedBuyers: safe(pat.none.buyers),
@@ -661,6 +695,19 @@ function simulate(planIn, seed, round) {
     ltvPerBuyer: ltvPerBuyer, ltvTotal: ltvTotal, roas: div(ltvTotal, spend), cpa: div(spend, buyersLinked),
     patterns: patterns, segments: seg, attrs: attrs
   };
+}
+
+/* 購入者分析から「購入につながりやすい顧客層」を見つける。
+   購買指数＝その層の（購入者数÷接触機会）÷全体平均。ターゲティングとメッセージの影響を除いて比べる */
+function segmentInsight(res) {
+  // 広告メッセージとの相性による上振れも除き、その層がもともと持つ購入のしやすさを比べる
+  const msg = MESSAGES.find(m => m.id === res.plan.msg) || MESSAGES[0];
+  const base = res.segments.map((sg, i) => sg.contacts + CONFIG.ORGANIC_SHOPPERS * SEGMENTS[i].share);
+  const adj = res.segments.map((sg, i) => div(sg.buyers, Math.pow(msg.aff[i], 1.5)));
+  const totalRate = div(adj.reduce((a, v) => a + v, 0), base.reduce((a, v) => a + v, 0));
+  const list = res.segments.map((sg, i) => ({ i: i, name: SEGMENTS[i].name, share: div(sg.buyers, res.buyers), index: div(div(adj[i], base[i]), totalRate) }));
+  const top = list.filter(x => x.i !== 4).sort((a, b) => b.index - a.index)[0];
+  return Object.assign({ seg: top.i, segName: top.name, index: top.index, list: list, fromRound: res.round }, SEG_INSIGHT[top.i]);
 }
 
 /* タイプ別の再購入率（新規・リピート・スイッチ候補） */
@@ -725,17 +772,19 @@ function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<
    5. ゲーム状態（1つのstateオブジェクトで管理）
    ===================================================================== */
 const ROUND_INFO = {
-  1: { title: '広告を届ける', goal: 'TVCM・DOOH・店内サイネージに予算を配分し、広告接触から来店・購買までのファネルを確認します。' },
-  2: { title: '購入者を知る', goal: 'ROUND 1の購入者分析をもとに、ターゲットとメッセージを選び直します。新規・リピート・スイッチ候補の変化を確かめましょう。' },
-  3: { title: '勝ちパターンを磨く', goal: 'これまでの分析結果を踏まえて戦略を改善し、ROUND 1からの成果の変化を確認します。' }
+  1: { title: '広告を届ける', goal: 'TVCM・DOOH・店内サイネージに予算を配分し、広告接触から来店・購買までのファネルを確認します。まだ購入者のデータがないため、配信ターゲットは絞れません。' },
+  2: { title: '購入者を知る', goal: 'ROUND 1で購入につながった人の顧客分析から得た示唆を使って、ターゲティングと広告メッセージを選びます。示唆に合うほど、購入者が増えやすくなります。' },
+  3: { title: '勝ちパターンを磨く', goal: 'ROUND 2の購入者分析で示唆を確かめ、ターゲティング・メッセージ・予算配分を磨きます。ROUND 1からの成果の変化を確認しましょう。' }
 };
 const STEPS = ['予算配分', 'メッセージ', 'ターゲット', '配信', '来店・購買結果', '購買者分析', '次回施策'];
 
 function newSeed() { return ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) || 1; }
-function defaultPlan() { return { tv: 400, dooh: 300, sig: 300, msg: null, target: null }; }
+function defaultPlan() { return { tv: 400, dooh: 300, sig: 300, msg: null, target: 'broad' }; }
 function createState() {
+  const seed = newSeed();
   return {
-    seed: newSeed(),
+    seed: seed,
+    hot: CONFIG.HOT_SEGMENTS[seed % CONFIG.HOT_SEGMENTS.length], // このゲームで実は購入につながりやすい顧客層（プレイヤーには分析で見える）
     screen: 'intro',
     viewRound: 1,
     round: 1,
@@ -780,9 +829,11 @@ function deliver() {
   if (plan.tv + plan.dooh + plan.sig !== CONFIG.BUDGET_TOTAL) return;
   if (state.results[r]) { go('run', r); return; }  // 二重計算しない
   state.busy = true;
-  state.results[r] = simulate(plan, state.seed, r);
+  state.results[r] = simulate(plan, state.seed, r, { hot: state.hot, insight: r >= 2 ? getInsight(r) : null });
   go('run', r);
 }
+/* ROUND rで使える示唆＝直前のラウンドの購入者分析から得た示唆 */
+function getInsight(r) { const prev = state.results[r - 1]; return prev ? segmentInsight(prev) : null; }
 function nextRound() {
   if (state.round >= 3) return;
   const prev = state.plans[state.round];
@@ -815,12 +866,22 @@ function doctorComments(res, phase) {
   const bp = bestPattern(res);
   if (phase === 'result') {
     if (res.round === 1) out.push({ t: '売れた個数だけでは、広告の勝ちパターンは分かりません。' });
+    if (res.round === 1) out.push({ t: '今回はターゲットを絞らずに配信しました。購入者を分析すれば、次から「誰に届けるべきか」が見えてきます。' });
+    if (res.insight && res.insight.used) {
+      const I = res.insight;
+      if (I.targetMatch && I.msgMatch) out.push({ t: '分析で見えた顧客像（' + I.segName + '）に合わせたターゲティングと広告メッセージで、購入につながる人が増えました。', c: 'gold' });
+      else if (I.targetMatch) out.push({ t: 'ターゲティングは分析の示唆（' + I.segName + '）に合っています。広告メッセージもこの層に合わせると、さらに伸ばせそうです。' });
+      else if (I.msgMatch) out.push({ t: '広告メッセージは分析の示唆に合っています。配信ターゲットも' + I.segName + 'に届くよう絞ると、さらに伸ばせそうです。' });
+      else out.push({ t: '今回の配信ターゲットと広告メッセージは、分析で見えた顧客像（' + I.segName + '）とずれていたようです。', c: 'warn' });
+    }
     out.push({ t: '広告に接触した ' + fmt.people(res.contacts) + ' のうち ' + fmt.people(res.visitors) + ' が来店し、' + fmt.people(res.buyersLinked) + ' の購入を確認できました。' });
     if (bp) out.push({ t: bp.label + 'の人は、来店後の購入率が ' + fmt.pct(bp.buyRate) + ' と最も高くなりました。', c: 'gold' });
     if (plan.sig < 150) out.push({ t: '店内サイネージの予算が少なく、来店後の「ひと押し」が不足しています。', c: 'warn' });
     if (plan.tv >= 650) out.push({ t: 'TVCM中心の配分で接触人数は多いものの、来店への転換は伸びにくい構成です。', c: 'warn' });
     if (res.bonuses.length) out.push({ t: 'メッセージとターゲットの相性が結果を押し上げています。' });
   } else {
+    const SI = segmentInsight(res);
+    out.push({ t: '接触機会あたりの購入が特に多かったのは「' + SI.segName + '」でした（購買指数 ' + SI.index.toFixed(2) + '）。' + (res.round < 3 ? '次のラウンドは、この層に届けるターゲティングとメッセージを考えましょう。' : ''), c: 'gold' });
     const shares = [['新規購入', res.newRate], ['リピート購入', res.repShare], ['ブランドスイッチ候補', res.swRate]].sort((a, b) => b[1] - a[1]);
     out.push({ t: '今回の購入者は、' + shares[0][0] + 'の比率が最も高いようです（' + fmt.pct(shares[0][1]) + '）。' });
     const dsig = res.patterns.find(p => p.key === 'doohsig');
@@ -844,8 +905,8 @@ function nextHints(res) {
   const h = [];
   const plan = res.plan;
   const a = res.attrs;
-  const top = topSegment(res);
-  h.push({ t: '購入者の中心は「' + top.name + '」', d: '購入者の ' + fmt.pct(div(top.buyers, res.buyers)) + ' を占めました。この層に合うメッセージとターゲットを考えましょう。' });
+  const SI = segmentInsight(res);
+  h.push({ t: '購入につながりやすいのは「' + SI.segName + '」', d: SI.trait + '（購買指数 ' + SI.index.toFixed(2) + '、全体平均＝1.00）この層に届くターゲットと、響くメッセージを選びましょう。' });
   if (a.hair >= 0.6 && !(plan.target === 'haircare' && plan.msg === 'func')) h.push({ t: 'ヘアケア関心層が ' + fmt.pct(a.hair, 0), d: '購入者の多くはヘアケアへの関心が高い層です。商品の違いを伝えるメッセージと相性がよいかもしれません。' });
   if (a.station >= 0.45 && plan.dooh < 400) h.push({ t: '平日夕方の駅前利用が ' + fmt.pct(a.station, 0), d: '駅前の生活動線で接触できるDOOHを厚くし、時間帯を絞る余地があります。' });
   const dsig = res.patterns.find(p => p.key === 'doohsig');
@@ -867,6 +928,12 @@ function finalReview(r1, r3, score) {
   if (r3.ltvTotal >= r1.ltvTotal) lines.push('想定LTVの合計は ' + fmt.deltaRate(r1.ltvTotal, r3.ltvTotal).t + '。「誰が買ったか」を踏まえた改善が、売上の先の価値につながりました。');
   else lines.push('想定LTVの合計は ' + fmt.deltaRate(r1.ltvTotal, r3.ltvTotal).t + '。再購入につながる層への訴求が弱かった可能性があります。');
   if (dB > 0.15 && dL > 0.15) lines.push('来店・購買・再購入のすべてで手応えのある改善です。データをつないで勝ちパターンを磨けています。');
+  const I = r3.insight;
+  if (I && I.used) {
+    if (I.targetMatch && I.msgMatch) lines.push('ROUND 3は、購入者分析の示唆（' + I.segName + '）をターゲティングと広告メッセージの両方に生かせました。');
+    else if (I.targetMatch || I.msgMatch) lines.push('ROUND 3は、購入者分析の示唆（' + I.segName + '）を' + (I.targetMatch ? 'ターゲティング' : '広告メッセージ') + 'に生かせました。もう一方も合わせると、さらに伸ばせます。');
+    else lines.push('ROUND 3の戦略は、購入者分析の示唆（' + I.segName + '）とずれていました。');
+  }
   if (score.total < 60) lines.push('購入者分析で見えた傾向と、選んだターゲット・メッセージが噛み合っていなかったようです。');
   return lines;
 }
@@ -965,7 +1032,7 @@ function screenHead(eyebrow, title, lead, right) {
 const TUTORIAL = [
   { t: '広告を届ける', d: 'TVCM、DOOH、店内サイネージに予算を配分します。', chips: ['<span class="chip navy">TVCM</span>', '<span class="chip mint">DOOH</span>', '<span class="chip coral">店内サイネージ</span>'] },
   { t: '来店と購買を確かめる', d: '接触した生活者が、来店し、商品を購入したかを確認します。', chips: ['<span class="chip">広告接触</span>', '<span class="chip">→ 来店</span>', '<span class="chip coral">→ 購入</span>'] },
-  { t: '購入者を深く知る', d: '新規・リピート・スイッチ候補や購入者像を分析し、次の広告に生かします。', chips: ['<span class="chip mint">● 新規</span>', '<span class="chip navy">■ リピート</span>', '<span class="chip coral">◆ スイッチ候補</span>', '<span class="chip gold">LTV</span>'] }
+  { t: '購入者を深く知る', d: '新規・リピート・スイッチ候補や購入者像を分析します。ROUND 2からは、その示唆を使ってターゲティングできます。', chips: ['<span class="chip mint">● 新規</span>', '<span class="chip navy">■ リピート</span>', '<span class="chip coral">◆ スイッチ候補</span>', '<span class="chip gold">LTV</span>'] }
 ];
 function renderIntro() {
   const i = clamp(state.tutorial, 0, 2);
@@ -1024,10 +1091,11 @@ function renderPlan() {
     { k: 'dooh', name: 'DOOH', ico: 'DO', cls: 'ico-dooh', tags: ['駅前・生活動線', 'エリア・時間帯を指定', '来店と相性◎'] },
     { k: 'sig', name: '店内サイネージ', ico: 'SG', cls: 'ico-sig', tags: ['商品棚の近く', '接触人数 少', '購入転換 高', '重複接触で効果増'] }
   ];
-  const prevHint = prev ? (() => {
-    const hs = nextHints(prev).slice(0, 2);
-    return '<div class="prev-hint"><b>前回の分析メモ：</b>' + hs.map(h => esc(h.t)).join(' ／ ') + '</div>';
-  })() : '';
+  const ins = r > 1 ? getInsight(r) : null;
+  const prevHint = ins ? '<div class="insight-box"><div><span class="eyebrow">ROUND ' + ins.fromRound + 'の購入者分析から得た示唆</span>' +
+    '<p class="ins-main">購入につながりやすかった顧客：<b>' + esc(ins.segName) + '</b><span class="chip gold num">購買指数 ' + ins.index.toFixed(2) + '</span></p>' +
+    '<p class="small">' + esc(ins.trait) + '</p></div>' +
+    '<p class="small muted">この顧客に届く<b>配信ターゲット</b>と、この顧客が反応しやすい<b>広告メッセージ</b>を選ぶと、購入者が増えやすくなります。</p></div>' : '';
   stage.innerHTML =
     '<section class="screen">' +
     screenHead('ROUND ' + r + ' ・ ' + info.title, '広告プランを組み立てる', info.goal,
@@ -1051,9 +1119,10 @@ function renderPlan() {
         MESSAGES.map(m => '<label class="opt"><input type="radio" name="msg" id="msg-' + m.id + '" value="' + m.id + '"' + (plan.msg === m.id ? ' checked' : '') + '>' +
           '<span class="box"><span class="radio-ind" aria-hidden="true"></span><span><span class="t">' + m.name + '</span><span class="copy">' + m.copy + '</span><span class="d">' + m.desc + '</span></span></span></label>').join('') +
         '</div></div>' +
-      '<div class="panel"><h3><span class="stepno">3</span>配信ターゲット</h3>' +
+      '<div class="panel"><h3><span class="stepno">3</span>配信ターゲット' + (r === 1 ? '<span class="chip">🔒 ROUND 2から選択可</span>' : '<span class="chip gold">分析の示唆を活用</span>') + '</h3>' +
+        (r === 1 ? '<p class="small muted" style="margin-top:6px">ROUND 1は、まだ「誰が買うのか」のデータがないため、ターゲットを絞らず幅広い生活者に配信します。購入者を分析すると、ROUND 2からターゲティングできるようになります。</p>' : '') +
         '<div class="opt-list" role="radiogroup" aria-label="配信ターゲット">' +
-        TARGETS.map(t => '<label class="opt"><input type="radio" name="target" id="tg-' + t.id + '" value="' + t.id + '"' + (plan.target === t.id ? ' checked' : '') + '>' +
+        TARGETS.map(t => '<label class="opt' + (r === 1 && t.id !== 'broad' ? ' is-locked' : '') + '"><input type="radio" name="target" id="tg-' + t.id + '" value="' + t.id + '"' + (plan.target === t.id ? ' checked' : '') + (r === 1 && t.id !== 'broad' ? ' disabled' : '') + '>' +
           '<span class="box"><span class="radio-ind" aria-hidden="true"></span><span><span class="t">' + t.name + '</span><span class="d">' + t.desc + '</span></span></span></label>').join('') +
         '</div></div>' +
     '</div>' +
@@ -1498,7 +1567,8 @@ function renderNext() {
     screenHead('ROUND ' + r + ' ・ 次回施策', '分析結果を次の広告に生かす', '購入者分析から見えた傾向をもとに、ROUND ' + (r + 1) + 'の戦略を考えます。') +
     top +
     '<div class="two-col">' +
-      '<div class="panel"><h3>次回施策へのヒント</h3><div class="hint-list">' + hints.map((h, i) => '<div class="hint"><span class="hi" aria-hidden="true">' + (i + 1) + '</span><div><b>' + esc(h.t) + '</b><span>' + esc(h.d) + '</span></div></div>').join('') + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:14px">' + segIndexPanel(res) +
+      '<div class="panel"><h3>次回施策へのヒント</h3><div class="hint-list">' + hints.map((h, i) => '<div class="hint"><span class="hi" aria-hidden="true">' + (i + 1) + '</span><div><b>' + esc(h.t) + '</b><span>' + esc(h.d) + '</span></div></div>').join('') + '</div></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:14px">' +
         doctorBlock([{ t: '分析結果に合ったターゲットとメッセージを選ぶと、成果が伸びやすくなります。' }, { t: '逆に、分析と合わない戦略では改善しないこともあります。データの傾向をよく見て選びましょう。', c: 'warn' }]) +
         '<div class="panel"><h3>ROUND ' + r + 'のプラン</h3><div class="summary-line" style="margin-top:8px"><span class="chip navy">TVCM ' + fmt.man(res.plan.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(res.plan.dooh) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(res.plan.sig) + '</span><span class="chip">' + msgName(res.plan.msg) + '</span><span class="chip">' + targetName(res.plan.target) + '</span></div></div>' +
@@ -1506,6 +1576,16 @@ function renderNext() {
     '</div>' +
     '<div class="actions between no-print"><button class="btn btn-ghost" data-action="view-analysis" data-round="' + r + '">分析に戻る</button><button class="btn btn-accent btn-lg" data-action="next-round">ROUND ' + (r + 1) + 'へ進む</button></div>' +
     '</section>';
+  requestAnimationFrame(() => requestAnimationFrame(() => $$('.seg-index', stage).forEach(el => el.classList.add('go'))));
+}
+
+function segIndexPanel(res) {
+  const SI = segmentInsight(res);
+  const mx = Math.max.apply(null, SI.list.map(x => x.index).concat([1]));
+  return '<div class="panel seg-index"><h3>購入につながった顧客像<span class="chip gold">示唆</span></h3>' +
+    '<p class="small muted" style="margin:4px 0 10px">購買指数＝接触機会あたりの購入のしやすさ（全体平均＝1.00）。ターゲットの絞り込みや広告メッセージの影響を除いて比べています。</p>' +
+    '<div class="hbars">' + SI.list.map(x => '<div class="hbar' + (x.i === SI.seg ? ' top' : '') + '"><span>' + (x.i === SI.seg ? '★ ' : '') + esc(x.name) + '</span><span class="track"><span class="fill" style="--w:' + (div(x.index, mx) * 100).toFixed(1) + '%;background:' + (x.i === SI.seg ? 'var(--gold)' : 'var(--navy-2)') + '"></span></span><span class="val">' + x.index.toFixed(2) + '</span></div>').join('') + '</div>' +
+    '<p class="small" style="margin-top:10px"><b>示唆：</b>' + esc(SI.trait) + '</p></div>';
 }
 
 /* ---------- Final ---------- */
@@ -1567,7 +1647,8 @@ function renderReport() {
   const topAge = a.age.indexOf(Math.max.apply(null, a.age));
   const rowsDef = [
     ['TVCM 予算', x => fmt.man(x.plan.tv)], ['DOOH 予算', x => fmt.man(x.plan.dooh)], ['店内サイネージ 予算', x => fmt.man(x.plan.sig)],
-    ['ターゲット', x => targetName(x.plan.target)], ['広告メッセージ', x => msgName(x.plan.msg)],
+    ['ターゲット', x => targetName(x.plan.target) + (x.round === 1 ? '（固定）' : '')], ['広告メッセージ', x => msgName(x.plan.msg)],
+    ['分析の示唆との一致', x => !x.insight.used ? '—' : ((x.insight.targetMatch ? 'ターゲット◎' : 'ターゲット×') + ' / ' + (x.insight.msgMatch ? 'メッセージ◎' : 'メッセージ×'))],
     ['広告接触者数', x => fmt.num(x.contacts)], ['来店者数', x => fmt.num(x.visitors)], ['店内サイネージ接触者数', x => fmt.num(x.sigContacts)],
     ['購入者数', x => fmt.num(x.buyers)],
     ['新規／リピート／スイッチ候補', x => fmt.pct(x.newRate, 0) + ' / ' + fmt.pct(x.repShare, 0) + ' / ' + fmt.pct(x.swRate, 0)],
@@ -1643,7 +1724,7 @@ document.addEventListener('change', (e) => {
   const p = state.plans[state.viewRound];
   if (!p || state.results[state.viewRound]) return;
   if (t.name === 'msg') p.msg = t.value;
-  if (t.name === 'target') p.target = t.value;
+  if (t.name === 'target' && state.viewRound > 1) p.target = t.value;
   updatePlanReadouts();
   renderTopbar();
 });
