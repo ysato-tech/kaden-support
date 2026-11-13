@@ -174,6 +174,11 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .media-tags .chip{font-size:11px;padding:1px 8px}
 input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:28px;cursor:pointer}
 .media-reach{grid-column:1 / -1;font-size:12px;color:var(--muted)}
+.sig-bubble{grid-column:1 / -1;justify-self:start;font-weight:800;font-size:15px;padding:4px 12px;border-radius:14px;position:relative;animation:bubble-pop 1.8s steps(1,end) forwards}
+.sig-bubble.yay{background:var(--gold-soft);color:var(--gold-ink);border:2px solid var(--gold)}
+.sig-bubble.aww{background:var(--surface-2);color:var(--muted);border:2px solid var(--line)}
+.sig-bubble::before{content:"";position:absolute;left:18px;top:-8px;border:6px solid transparent;border-bottom-color:inherit}
+@keyframes bubble-pop{0%{transform:scale(.6)}8%{transform:scale(1.12)}16%{transform:scale(1)}85%{opacity:1}100%{opacity:0}}
 .alloc-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--surface-2);margin-top:10px}
 .alloc-bar span{display:block;height:100%;transition:width .25s ease}
 .sum-badge{margin-left:auto;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--mint-soft);color:var(--mint-ink)}
@@ -2024,7 +2029,11 @@ const Sound = (() => {
     sparkle: (t) => { [1568, 2093, 2637, 3136].forEach((f, i) => tone(sfxBus, 0.125, f, t + i * 0.04, 0.05, 0.07)); },
     reveal: (t) => { [523.3, 659.3, 784, 1046.5].forEach((f, i) => tone(sfxBus, 0.25, f, t + i * 0.035, 0.05, 0.08)); },
     back: (t) => { tone(sfxBus, 0.5, 880, t, 0.04, 0.09); tone(sfxBus, 0.5, 587.3, t + 0.045, 0.06, 0.09); },
-    toggle: (t) => { tone(sfxBus, 0.25, 1174.7, t, 0.05, 0.10); }
+    toggle: (t) => { tone(sfxBus, 0.25, 1174.7, t, 0.05, 0.10); },
+    // 盛り上がり：駆け上がる和音＋クラッカー風ノイズ
+    yay: (t) => { [523.3, 659.3, 784, 1046.5, 1318.5].forEach((f, i) => tone(sfxBus, 0.25, f, t + i * 0.05, 0.09, 0.12)); tone(sfxBus, 0.5, 1568, t + 0.27, 0.25, 0.10); noise(sfxBus, t + 0.25, 0.25, 0.08, 3000); },
+    // 落胆：トロンボーン風に「ワ・ワ・ワ・ワ〜ン」と下がる
+    aww: (t) => { [392, 370, 349.2].forEach((f, i) => tone(sfxBus, 0.5, f, t + i * 0.22, 0.18, 0.12, f * 0.97)); tone(sfxBus, 0.5, 329.6, t + 0.66, 0.6, 0.12, 246.9); }
   };
   let lastTick = 0;
   function sfx(name) {
@@ -2088,7 +2097,35 @@ const Sound = (() => {
     let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i])); return m;
   }
   function state() { return ctx ? ctx.state : 'none'; }
-  return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
+  /* 声（ブラウザの音声読み上げ機能）。日本語の声がない環境では効果音だけ鳴らす */
+  let jaVoice = null;
+  const pickVoice = () => {
+    try {
+      const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      jaVoice = vs.find(v => /^ja/i.test(v.lang) && /female|kyoko|haruka|nanami|ayumi|mizuki|google/i.test(v.name)) || vs.find(v => /^ja/i.test(v.lang)) || null;
+    } catch (e) { jaVoice = null; }
+  };
+  try { if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } } catch (e) { /* noop */ }
+  const VOICES = {
+    yay: { text: 'イエーイ！', pitch: 1.9, rate: 1.25 },
+    aww: { text: 'あー…', pitch: 0.4, rate: 0.55 }
+  };
+  function voice(kind) {
+    if (!prefs.sfx || !VOICES[kind]) return;
+    unlock();
+    sfx(kind);
+    try {
+      const sp = window.speechSynthesis;
+      if (!sp || typeof SpeechSynthesisUtterance === 'undefined') return;
+      if (!jaVoice) pickVoice();
+      if (!jaVoice) return;                      // 日本語の声がなければ読み上げない（変な発音を避ける）
+      sp.cancel();
+      const v = VOICES[kind], u = new SpeechSynthesisUtterance(v.text);
+      u.voice = jaVoice; u.lang = jaVoice.lang; u.pitch = v.pitch; u.rate = v.rate; u.volume = 1;
+      setTimeout(() => { try { sp.speak(u); } catch (e) { /* noop */ } }, kind === 'yay' ? 120 : 0);
+    } catch (e) { /* 読み上げできなくてもゲームは続ける */ }
+  }
+  return { voice: voice, scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
 })();
 const SCREEN_MUSIC = { ranking: 'title', intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
 
@@ -2255,8 +2292,8 @@ document.addEventListener('click', (e) => {
     case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
     case 'tut-prev': state.tutorial = clamp(state.tutorial - 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-prev"]:not([disabled]),[data-action="tut-next"]'); break;
     case 'start': go('plan', 1); break;
-    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { p.tv = 250; p.dooh = 250; p.dig = 250; p.sig = 250; updatePlanReadouts(); } break; }
-    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.dig = d.dig; p.sig = d.sig; updatePlanReadouts(); } break; }
+    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { watchSignage(p.sig); p.tv = 250; p.dooh = 250; p.dig = 250; p.sig = 250; updatePlanReadouts(); } break; }
+    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { watchSignage(p.sig); const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.dig = d.dig; p.sig = d.sig; updatePlanReadouts(); } break; }
     case 'deliver': el.disabled = true; deliver(); break;
     case 'skip-anim': if (anim.finish) anim.finish(); break;
     case 'analyze': go('analysis', state.viewRound); break;
@@ -2279,10 +2316,35 @@ document.addEventListener('click', (e) => {
   }
 });
 function focusFirst(sel) { const b = $(sel, stage); if (b) try { b.focus(); } catch (e) { /* noop */ } }
+/* 店内サイネージの予算が上がったら「イエーイ！」、下がったら「あー…」。
+   スライダーを動かしている間はまとめて、手を止めた時点の増減で1回だけ反応する */
+const sigWatch = { base: null, timer: 0 };
+function watchSignage(before) {
+  if (sigWatch.base === null) sigWatch.base = before;
+  clearTimeout(sigWatch.timer);
+  sigWatch.timer = setTimeout(() => {
+    const p = state.plans[state.viewRound];
+    const base = sigWatch.base; sigWatch.base = null;
+    if (!p || state.screen !== 'plan' || base === null) return;
+    const d = p.sig - base;
+    if (d > 0) { Sound.voice('yay'); sigBubble('yay', d); }
+    else if (d < 0) { Sound.voice('aww'); sigBubble('aww', d); }
+  }, 450);
+}
+function sigBubble(kind, d) {
+  const host = $('#reach-sig'); if (!host) return;
+  const old = $('.sig-bubble'); if (old) old.remove();
+  const b = document.createElement('span');
+  b.className = 'sig-bubble ' + kind; b.setAttribute('role', 'status');
+  b.textContent = (kind === 'yay' ? 'イエーイ！ ' : 'あー… ') + (d > 0 ? '+' : '−') + fmt.man(Math.abs(d));
+  host.parentNode.insertBefore(b, host);
+  setTimeout(() => { if (b.parentNode) b.remove(); }, 1800);
+}
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (t && t.matches('input[type=range][data-media]')) {
     if (state.results[state.viewRound]) return;
+    const pl = state.plans[state.viewRound]; if (pl) watchSignage(pl.sig);
     setBudget(t.getAttribute('data-media'), Number(t.value));
     Sound.sfx('tick');
     updatePlanReadouts();
