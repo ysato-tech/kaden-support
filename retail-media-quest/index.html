@@ -318,6 +318,16 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .hbar .track{display:block;height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden}
 .hbar .fill{display:block;height:100%;width:0;border-radius:6px;background:var(--navy-2);transition:width .9s cubic-bezier(.2,.8,.2,1)}
 .go .hbar .fill,.go .stack span{width:var(--w)}
+.meters{display:flex;flex-direction:column;gap:12px}
+.meter-top{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px}
+.meter-top b{margin-left:auto;font-size:13px}
+.meter .lv{font-size:10px;font-weight:800;padding:0 6px;border-radius:4px;line-height:16px}
+.meter .lv.hi{background:var(--coral-soft);color:var(--coral-ink)}
+.meter .lv.mid{background:var(--gold-soft);color:var(--gold-ink)}
+.meter .lv.lo{background:var(--surface-2);color:var(--muted)}
+.cells{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.cells .cell{display:block;height:14px;border-radius:2px;background:var(--surface-2);transition:background-color .15s steps(1,end);transition-delay:calc(var(--k) * 70ms)}
+.go .cells .cell.on{background:var(--c)}
 .hbar .val{text-align:right;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums}
 .stack{display:flex;height:26px;border-radius:6px;overflow:hidden;background:var(--surface-2)}
 .stack span{width:0;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;transition:width .9s cubic-bezier(.2,.8,.2,1)}
@@ -557,15 +567,15 @@ const CONFIG = {
 
 const SEGMENTS = [
   { id: 'A', name: '20〜30代女性・駅前利用', short: '20-30代女性・駅前', share: 0.25, mix: [0.72, 0.18, 0.10],
-    prof: { f: 0.92, m: 0.06, age: [0.46, 0.44, 0.08, 0.02], station: 0.82, digital: 0.85, drug: 0.55, hair: 0.55, beauty: 0.74 } },
+    prof: { f: 0.92, m: 0.06, age: [0.46, 0.44, 0.08, 0.02], station: 0.82, digital: 0.85, drug: 0.55, hair: 0.55, cosme: 0.80, health: 0.34, fitness: 0.44, salon: 0.62 } },
   { id: 'B', name: '30〜40代女性・ヘアケア関心', short: '30-40代女性・ヘアケア関心', share: 0.25, mix: [0.48, 0.22, 0.30],
-    prof: { f: 0.90, m: 0.08, age: [0.04, 0.46, 0.44, 0.06], station: 0.30, digital: 0.75, drug: 0.66, hair: 0.95, beauty: 0.52 } },
+    prof: { f: 0.90, m: 0.08, age: [0.04, 0.46, 0.44, 0.06], station: 0.30, digital: 0.75, drug: 0.66, hair: 0.95, cosme: 0.62, health: 0.50, fitness: 0.38, salon: 0.76 } },
   { id: 'C', name: '既存ブランド購入者', short: '既存ブランド購入者', share: 0.20, mix: [0.08, 0.92, 0.00],
-    prof: { f: 0.74, m: 0.23, age: [0.15, 0.35, 0.30, 0.20], station: 0.36, digital: 0.65, drug: 0.62, hair: 0.70, beauty: 0.36 } },
+    prof: { f: 0.74, m: 0.23, age: [0.15, 0.35, 0.30, 0.20], station: 0.36, digital: 0.65, drug: 0.62, hair: 0.70, cosme: 0.46, health: 0.42, fitness: 0.30, salon: 0.52 } },
   { id: 'D', name: '競合ブランド購入者', short: '競合ブランド購入者', share: 0.20, mix: [0.18, 0.07, 0.75],
-    prof: { f: 0.70, m: 0.27, age: [0.18, 0.32, 0.30, 0.20], station: 0.36, digital: 0.70, drug: 0.56, hair: 0.76, beauty: 0.40 } },
+    prof: { f: 0.70, m: 0.27, age: [0.18, 0.32, 0.30, 0.20], station: 0.36, digital: 0.70, drug: 0.56, hair: 0.76, cosme: 0.48, health: 0.44, fitness: 0.33, salon: 0.55 } },
   { id: 'E', name: 'その他', short: 'その他', share: 0.10, mix: [0.62, 0.25, 0.13],
-    prof: { f: 0.45, m: 0.50, age: [0.14, 0.20, 0.26, 0.40], station: 0.25, digital: 0.45, drug: 0.34, hair: 0.25, beauty: 0.20 } }
+    prof: { f: 0.45, m: 0.50, age: [0.14, 0.20, 0.26, 0.40], station: 0.25, digital: 0.45, drug: 0.34, hair: 0.25, cosme: 0.20, health: 0.40, fitness: 0.30, salon: 0.24 } }
 ];
 
 const MESSAGES = [
@@ -773,7 +783,7 @@ function simulate(planIn, seed, round, ctx) {
   const ltvTotal = buyers * ltvPerBuyer;
   const spend = (plan.tv + plan.dooh + plan.dig + plan.sig) * 10000;
 
-  // 購入者の属性（セグメント構成から推定。接触経路によって行動属性・興味関心が変化）
+  // 購入者の属性（セグメント構成から推定。接触経路によって行動属性・購買傾向が変化）
   const w = seg.map(s => div(s.buyers, buyers));
   const wsum = (fn) => SEGMENTS.reduce((a, S, i) => a + w[i] * fn(S.prof, i), 0);
   const doohShareBuyers = div(seg.reduce((a, s) => a + s.doohBuyers, 0), buyers);
@@ -786,7 +796,10 @@ function simulate(planIn, seed, round, ctx) {
     station: clamp(wsum(p => p.station) + 0.22 * (doohShareBuyers - 0.35), 0.05, 0.95),
     drug: clamp(wsum(p => p.drug) + 0.20 * (sigShareBuyers - 0.45), 0.05, 0.95),
     hair: clamp(wsum(p => p.hair) * (plan.msg === 'func' ? 1.04 : 1) + 0.05 * (digShareBuyers - 0.3), 0.05, 0.97),
-    beauty: clamp(wsum(p => p.beauty) * (plan.target === 'f2030' ? 1.05 : 1) + 0.08 * (digShareBuyers - 0.3), 0.05, 0.95)
+    cosme: clamp(wsum(p => p.cosme) * (plan.target === 'f2030' ? 1.05 : 1) + 0.08 * (digShareBuyers - 0.3), 0.05, 0.95),
+    healthFood: clamp(wsum(p => p.health) + 0.05 * (sigShareBuyers - 0.45), 0.05, 0.95),
+    fitness: clamp(wsum(p => p.fitness) + 0.06 * (digShareBuyers - 0.3), 0.05, 0.95),
+    salon: clamp(wsum(p => p.salon) * (plan.msg === 'func' ? 1.04 : 1), 0.05, 0.95)
   };
 
   return {
@@ -1557,8 +1570,8 @@ const AN_ITEMS = [
   { k: 'type', t: '新規・リピート・スイッチ候補の構成比', half: true },
   { k: 'gender', t: '性別構成' },
   { k: 'age', t: '年代構成' },
+  { k: 'interest', t: '購買傾向' },
   { k: 'behavior', t: '行動属性' },
-  { k: 'interest', t: '興味関心' },
   { k: 'path', t: '広告接触経路', wide: true },
   { k: 'repurchase', t: '90日以内の想定再購入率' },
   { k: 'ltv', t: '想定LTV' }
@@ -1622,6 +1635,15 @@ function postReveal(card, k, res, instant) {
     if (cv) drawDonutAnimated(cv, [{ v: res.newB, c: TYPE_COLORS.new }, { v: res.repB, c: TYPE_COLORS.rep }, { v: res.swB, c: TYPE_COLORS.sw }], instant || reduceMotion);
   }
 }
+/* バロメーター：10マスの目盛りが順に点灯（高・中・低のラベルも併記） */
+function meter(label, ratio, color) {
+  const v = clamp(ratio, 0, 1), n = Math.round(v * 10);
+  const lv = v >= 0.6 ? ['高', 'hi'] : (v >= 0.35 ? ['中', 'mid'] : ['低', 'lo']);
+  let cells = '';
+  for (let k = 0; k < 10; k++) cells += '<i class="cell' + (k < n ? ' on' : '') + '" style="--k:' + k + '"></i>';
+  return '<div class="meter"><div class="meter-top"><span>' + label + '</span><span class="lv ' + lv[1] + '">' + lv[0] + '</span><b class="num">' + fmt.pct(v, 0) + '</b></div>' +
+    '<div class="cells" style="--c:' + color + '" role="img" aria-label="' + label + ' ' + fmt.pct(v, 0) + '（' + lv[0] + '）">' + cells + '</div></div>';
+}
 function hbar(label, ratio, color, valText) {
   const w = (clamp(ratio, 0, 1) * 100).toFixed(1) + '%';
   return '<div class="hbar"><span>' + label + '</span><span class="track"><span class="fill" style="--w:' + w + ';background:' + (color || 'var(--navy-2)') + '"></span></span><span class="val">' + (valText || fmt.pct(ratio, 0)) + '</span></div>';
@@ -1646,12 +1668,13 @@ function analysisContent(k, res) {
     return '<div class="vbars">' + a.age.map((v, i) => '<div class="vbar"><span class="val">' + fmt.pct(v, 0) + '</span><span class="colw"><span class="fill" style="--h:' + (v / mx * 100).toFixed(1) + '%;' + (v === mx ? 'background:var(--coral)' : '') + '"></span></span><span class="lab">' + labs[i] + '</span></div>').join('') + '</div>';
   }
   if (k === 'behavior') {
-    return '<div class="hbars">' + hbar('平日夕方の駅前利用', a.station, 'var(--mint-ink)') + hbar('ドラッグストア月2回以上', a.drug, 'var(--navy-2)') + '</div>' +
-      '<p class="note">DOOH接触のある購入者が多いほど「駅前利用」、店内サイネージ接触のある購入者が多いほど「月2回以上」の比率が高まります。</p>';
+    return '<div class="hbars">' + hbar('平日夕方の駅前利用', a.station, 'var(--mint-ink)') + hbar('ドラッグストア月2回以上', a.drug, 'var(--navy-2)') +
+      hbar('フィットネス利用', a.fitness, 'var(--sky)') + hbar('ヘアサロン利用', a.salon, 'var(--coral)') + '</div>' +
+      '<p class="note">購入者のうち各行動がみられる人の比率（重複あり）。DOOH接触が多いほど「駅前利用」、店内サイネージ接触が多いほど「月2回以上」が高まります。</p>';
   }
   if (k === 'interest') {
-    return '<div class="hbars">' + hbar('ヘアケア関心層', a.hair, 'var(--mint-ink)') + hbar('美容・ファッション関心層', a.beauty, 'var(--coral)') + '</div>' +
-      '<p class="note">購入者のうち各関心を持つ人の比率（重複あり）。</p>';
+    return '<div class="meters">' + meter('ヘアケア関心', a.hair, 'var(--mint)') + meter('化粧品関心', a.cosme, 'var(--coral)') + meter('健康食品関心', a.healthFood, 'var(--gold)') + '</div>' +
+      '<p class="note">購入者のうち、各カテゴリーの購買が多い人の比率（重複あり）。購買データから推定します。</p>';
   }
   if (k === 'path') {
     const bp = bestPattern(res);
@@ -1853,7 +1876,8 @@ function renderReport() {
             '<li>女性 ' + fmt.pct(a.gender.f, 0) + ' ／ 男性 ' + fmt.pct(a.gender.m, 0) + ' ／ その他・不明 ' + fmt.pct(a.gender.o, 0) + '</li>' +
             '<li>最多年代：' + ageLabs[topAge] + '（' + fmt.pct(a.age[topAge], 0) + '）</li>' +
             '<li>平日夕方の駅前利用 ' + fmt.pct(a.station, 0) + ' ／ ドラッグストア月2回以上 ' + fmt.pct(a.drug, 0) + '</li>' +
-            '<li>ヘアケア関心層 ' + fmt.pct(a.hair, 0) + ' ／ 美容・ファッション関心層 ' + fmt.pct(a.beauty, 0) + '</li>' +
+            '<li>フィットネス利用 ' + fmt.pct(a.fitness, 0) + ' ／ ヘアサロン利用 ' + fmt.pct(a.salon, 0) + '</li>' +
+            '<li>購買傾向：ヘアケア関心 ' + fmt.pct(a.hair, 0) + ' ／ 化粧品関心 ' + fmt.pct(a.cosme, 0) + ' ／ 健康食品関心 ' + fmt.pct(a.healthFood, 0) + '</li>' +
             '<li>購入者の中心セグメント：' + topSegment(r3).name + '</li></ul></div>' +
           '<div class="panel"><span class="section-t">有効だった接触経路（ROUND 3）</span><p style="font-size:13px">' + (bp ? '★ ' + esc(bp.label) + '：購入率 ' + fmt.pct(bp.buyRate) + '、再購入率 ' + fmt.pct(bp.repRate) : 'データ不足') + '</p></div>' +
           '<div class="panel"><span class="section-t">リテール博士の総評</span><ul class="plain">' + finalReview(r1, r3, sc).map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
