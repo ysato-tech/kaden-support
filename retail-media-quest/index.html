@@ -67,6 +67,14 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .brand strong{display:block;font-family:var(--font-num);font-size:15px;letter-spacing:.14em;font-weight:700}
 .brand span{display:block;font-size:11px;opacity:.78;letter-spacing:.04em}
 .rounds{display:flex;gap:6px;margin-left:auto}
+.sound-ctrl{display:flex;gap:6px}
+.snd{appearance:none;cursor:pointer;font-size:11px;letter-spacing:.04em;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:transparent;color:rgba(255,255,255,.75);min-height:26px;white-space:nowrap;transition:background .15s,color .15s}
+.snd b{font-family:var(--font-num);margin-left:2px}
+.snd:hover{background:rgba(255,255,255,.1)}
+.snd:active{transform:translateY(1px)}
+.snd[aria-pressed="true"]{border-color:var(--mint);color:#fff}
+.snd[aria-pressed="true"] b{color:var(--mint)}
+.snd[aria-pressed="false"] b{color:rgba(255,255,255,.55)}
 .round-pill{font-family:var(--font-num);font-size:11px;letter-spacing:.1em;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.28);color:rgba(255,255,255,.7);white-space:nowrap}
 .round-pill.is-current{background:var(--mint);border-color:var(--mint);color:var(--navy);font-weight:700}
 .round-pill.is-done{color:#fff;border-color:rgba(255,255,255,.6)}
@@ -386,7 +394,7 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
   @page{size:A4 landscape;margin:10mm}
   body{background:#fff;font-size:11px}
   body::before{display:none}
-  .topbar,.no-print,.btn{display:none!important}
+  .topbar,.no-print,.btn,.sound-ctrl{display:none!important}
   .stage-wrap{padding:0}
   #stage{max-width:none;min-height:0}
   .panel{box-shadow:none;break-inside:avoid}
@@ -403,6 +411,7 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
       <div><strong>RETAIL MEDIA QUEST</strong><span>広告接触を、購買とLTVにつなげよう</span></div>
     </div>
     <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
+    <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button></div>
     <ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol>
   </div>
 </header>
@@ -1015,6 +1024,8 @@ function render() {
   const s = state.screen;
   const fn = { intro: renderIntro, plan: renderPlan, run: renderRun, analysis: renderAnalysis, next: renderNext, final: renderFinal, ending: renderEnding, report: renderReport }[s] || renderIntro;
   fn();
+  if (s === 'final') Sound.scene('title', { jingle: 'fanfare' });
+  else if (s !== 'run') Sound.scene(SCREEN_MUSIC[s] || 'main');
   const h = $('h2', stage);
   if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
   try { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
@@ -1236,7 +1247,9 @@ function renderRun() {
     '</div>' +
     '<div id="runResults" hidden></div>' +
     '</section>';
-  const done = () => { state.busy = false; state.animated[r] = true; const sb = $('#skipBtn'); if (sb) sb.hidden = true; showRunResults(res, locked); };
+  const firstRun = !state.animated[r] && !reduceMotion;
+  Sound.scene(state.animated[r] ? 'main' : 'run');
+  const done = () => { if (firstRun) Sound.scene('main', { jingle: 'clear' }); else Sound.scene('main'); state.busy = false; state.animated[r] = true; const sb = $('#skipBtn'); if (sb) sb.hidden = true; showRunResults(res, locked); };
   runFunnel(res, locked, vals, state.animated[r] || reduceMotion, done);
 }
 function showRunResults(res, locked) {
@@ -1316,6 +1329,8 @@ function runFunnel(res, locked, vals, instant, onDone) {
   const started = new Set();
   const startCounter = (k) => {
     if (started.has(k)) return; started.add(k);
+    if (!instant && k === 3) Sound.sfx('coin');
+    if (!instant && k === 5 && !locked) Sound.sfx('sparkle');
     if (locked && k >= 4) return;
     const el = counters[k]; if (!el) return;
     countUp(el, vals[k], fmt.num, instant ? 0 : 900);
@@ -1466,6 +1481,7 @@ function revealSequence(res, r, instant) {
     const c = cards[i]; if (!c || c.classList.contains('is-revealed')) return;
     c.classList.remove('is-analyzing');
     c.classList.add('is-revealed');
+    if (!instant) Sound.sfx('reveal');
     state.revealed[r] = Math.max(state.revealed[r], i + 1);
     postReveal(c, AN_ITEMS[i].k, res, instant);
     if (cards[i + 1] && !instant) cards[i + 1].classList.add('is-analyzing');
@@ -1725,12 +1741,217 @@ function renderReport() {
 }
 
 /* =====================================================================
+   8.5 サウンド（ファミコン風BGM・効果音）
+   外部ファイルを使わず、Web Audio APIで矩形波・三角波・ノイズを合成して鳴らす。
+   曲はすべてこのゲームのためのオリジナル。ブラウザの仕様上、最初のクリック後に鳴り始める。
+   ===================================================================== */
+const Sound = (() => {
+  const NOTE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+  const CHORD = { C: ['C', 'E', 'G'], Am: ['A', 'C', 'E'], F: ['F', 'A', 'C'], G: ['G', 'B', 'D'], Dm: ['D', 'F', 'A'], Em: ['E', 'G', 'B'], E: ['E', 'G#', 'B'] };
+  const freqOf = (name, oct) => 440 * Math.pow(2, (NOTE[name] + (oct + 1) * 12 - 69) / 12);
+  const parseNote = (n) => { const m = /^([A-G]#?)(\d)$/.exec(n); return m ? freqOf(m[1], Number(m[2])) : 0; };
+
+  // 曲データ：chords＝1小節ごとのコード（' '区切りで小節内2コード）、lead＝音名:長さ（16分音符単位）
+  const SONGS = {
+    title: { bpm: 132, drums: 'march', loop: true, chords: ['C', 'F', 'G', 'C', 'Am', 'F', 'G', 'G'],
+      lead: 'C5:3 C5:1 G5:4 E5:2 G5:2 C6:4 | A5:3 A5:1 C6:4 A5:2 F5:2 A5:4 | B5:2 A5:2 G5:2 F5:2 D5:4 G5:4 | E5:4 C5:4 G4:4 -:4 | A4:2 C5:2 E5:4 A5:2 G5:2 E5:4 | F5:2 A5:2 C6:4 D6:2 C6:2 A5:4 | G5:2 F5:2 E5:2 D5:2 B4:4 D5:4 | G5:4 B5:4 D6:4 -:4' },
+    main: { bpm: 116, drums: 'pop', loop: true, chords: ['C', 'Am', 'F', 'G', 'C', 'Am', 'F G', 'C'],
+      lead: 'E5:2 G5:2 C6:4 B5:2 G5:2 E5:4 | A5:2 C6:2 E6:4 D6:2 C6:2 A5:4 | F5:2 A5:2 C6:3 A5:1 G5:2 F5:2 E5:4 | D5:2 G5:2 B5:4 A5:4 G5:4 | E5:2 G5:2 C6:4 E6:2 D6:2 C6:4 | A5:3 B5:1 C6:2 A5:2 E5:4 -:4 | F5:2 A5:2 D6:4 G5:2 B5:2 D6:4 | C6:4 G5:2 E5:2 C5:4 -:4' },
+    run: { bpm: 152, drums: 'drive', loop: true, chords: ['C', 'G', 'Am', 'F G'],
+      lead: 'C5:1 E5:1 G5:1 C6:1 G5:1 E5:1 C5:2 E5:1 G5:1 C6:1 E6:1 C6:2 G5:2 | B4:1 D5:1 G5:1 B5:1 G5:1 D5:1 B4:2 D5:1 G5:1 B5:1 D6:1 B5:2 G5:2 | A4:1 C5:1 E5:1 A5:1 E5:1 C5:1 A4:2 C5:1 E5:1 A5:1 C6:1 A5:2 E5:2 | F5:2 A5:2 C6:2 A5:2 G5:2 B5:2 D6:4' },
+    analysis: { bpm: 100, drums: 'soft', loop: true, chords: ['Am', 'F', 'Dm', 'E', 'Am', 'F', 'G', 'E'],
+      lead: 'A4:2 C5:2 E5:2 A5:2 G5:4 E5:4 | F5:2 E5:2 C5:2 A4:2 C5:8 | D5:2 F5:2 A5:2 F5:2 E5:4 D5:4 | E5:4 G#5:4 B5:4 -:4 | A5:2 B5:2 C6:4 B5:2 A5:2 E5:4 | F5:3 E5:1 D5:2 C5:2 A4:4 C5:4 | D5:2 E5:2 G5:4 F5:2 E5:2 D5:4 | E5:8 -:8' },
+    ending: { bpm: 84, drums: 'soft', loop: true, chords: ['F', 'G', 'Em', 'Am', 'Dm', 'G', 'C', 'C'],
+      lead: 'A5:6 G5:2 F5:4 C5:4 | D5:6 E5:2 G5:4 B5:4 | B5:6 A5:2 G5:4 E5:4 | A5:8 E5:4 C5:4 | D5:4 F5:4 A5:4 C6:4 | B5:6 A5:2 G5:4 D5:4 | E5:4 G5:4 C6:8 | C6:12 -:4' },
+    clear: { bpm: 168, drums: 'none', loop: false, chords: ['C', 'C'],
+      lead: 'C5:1 E5:1 G5:1 C6:3 G5:1 C6:1 E6:8 | -:16' },
+    fanfare: { bpm: 140, drums: 'march', loop: false, chords: ['C', 'F G', 'C', 'C'],
+      lead: 'G4:2 C5:2 E5:2 G5:4 E5:2 G5:4 | A5:2 C6:2 A5:2 F5:2 G5:2 B5:2 D6:4 | C6:4 G5:2 E5:2 C6:8 | -:16' }
+  };
+
+  const prefs = { bgm: true, sfx: true };
+  try { const v = JSON.parse(localStorage.getItem('rmq-sound') || 'null'); if (v) { prefs.bgm = v.bgm !== false; prefs.sfx = v.sfx !== false; } } catch (e) { /* 保存なしでも動く */ }
+  const savePrefs = () => { try { localStorage.setItem('rmq-sound', JSON.stringify(prefs)); } catch (e) { /* noop */ } };
+
+  let ctx = null, master, bgmBus, sfxBus, noiseBuf, pulse = {};
+  let unlocked = false, wanted = null, playing = null, after = null, timer = 0, nextTime = 0, stepIdx = 0, compiled = null;
+  const compiledCache = {};
+
+  function init() {
+    if (ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try { ctx = new AC(); } catch (e) { ctx = null; return false; }
+    master = ctx.createGain(); master.gain.value = 0.22; master.connect(ctx.destination);
+    bgmBus = ctx.createGain(); bgmBus.gain.value = 0.6; bgmBus.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    [0.125, 0.25, 0.5].forEach(duty => {   // ファミコンの矩形波（デューティ比 12.5% / 25% / 50%）
+      const N = 32, real = new Float32Array(N), imag = new Float32Array(N);
+      for (let n = 1; n < N; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+      pulse[duty] = ctx.createPeriodicWave(real, imag);
+    });
+    return true;
+  }
+
+  function tone(bus, wave, freq, t, dur, vol, slideTo) {
+    if (!freq) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    if (wave === 'tri') o.type = 'triangle'; else o.setPeriodicWave(pulse[wave] || pulse[0.5]);
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.setValueAtTime(vol, t + Math.max(0.005, dur - 0.03));
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g); g.connect(bus);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(bus, t, dur, vol, hp) {
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = hp || 1000;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(f); f.connect(g); g.connect(bus);
+    src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02);
+  }
+
+  /* 曲データを16分音符ごとのイベント列に変換 */
+  function compile(name) {
+    if (compiledCache[name]) return compiledCache[name];
+    const S = SONGS[name];
+    const total = S.chords.length * 16;
+    const steps = Array.from({ length: total }, () => []);
+    let pos = 0;
+    S.lead.replace(/\|/g, ' ').trim().split(/\s+/).forEach(tok => {
+      const [n, l] = tok.split(':'); const len = Number(l) || 1;
+      if (n !== '-' && pos < total) steps[pos].push({ i: 'lead', f: parseNote(n), len: len });
+      pos += len;
+    });
+    S.chords.forEach((cs, bar) => {
+      const parts = cs.split(' ');
+      parts.forEach((cn, pi) => {
+        const ch = CHORD[cn] || CHORD.C;
+        const span = 16 / parts.length, start = bar * 16 + pi * span;
+        for (let k = 0; k < span; k += 2) {
+          steps[start + k].push({ i: 'bass', f: freqOf(ch[0], (k / 2) % 2 === 0 ? 2 : 3), len: 2 });
+          const arp = [ch[0], ch[1], ch[2], ch[1]][(k / 2) % 4];
+          steps[start + k].push({ i: 'harm', f: freqOf(arp, 4), len: 2 });
+        }
+      });
+      const D = S.drums;
+      for (let k = 0; k < 16; k++) {
+        const st = steps[bar * 16 + k];
+        if (D === 'march') { if (k % 8 === 0) st.push({ i: 'kick' }); if (k % 8 === 4) st.push({ i: 'snare' }); if (k % 2 === 0) st.push({ i: 'hat' }); }
+        if (D === 'pop') { if (k === 0 || k === 6 || k === 8) st.push({ i: 'kick' }); if (k === 4 || k === 12) st.push({ i: 'snare' }); if (k % 2 === 0) st.push({ i: 'hat' }); }
+        if (D === 'drive') { if (k % 4 === 0) st.push({ i: 'kick' }); if (k === 4 || k === 12) st.push({ i: 'snare' }); st.push({ i: 'hat', soft: k % 2 === 1 }); }
+        if (D === 'soft') { if (k === 0) st.push({ i: 'kick' }); if (k === 8) st.push({ i: 'snare', soft: true }); if (k % 4 === 2) st.push({ i: 'hat' }); }
+      }
+    });
+    compiledCache[name] = { steps: steps, stepDur: 60 / S.bpm / 4, loop: S.loop };
+    return compiledCache[name];
+  }
+
+  function playStep(ev, t, sd) {
+    ev.forEach(e => {
+      if (e.i === 'lead') tone(bgmBus, 0.25, e.f, t, e.len * sd * 0.92, 0.13);
+      else if (e.i === 'harm') tone(bgmBus, 0.125, e.f, t, e.len * sd * 0.8, 0.045);
+      else if (e.i === 'bass') tone(bgmBus, 'tri', e.f, t, e.len * sd * 0.9, 0.22);
+      else if (e.i === 'kick') tone(bgmBus, 'tri', 160, t, 0.12, 0.35, 45);
+      else if (e.i === 'snare') noise(bgmBus, t, e.soft ? 0.08 : 0.12, e.soft ? 0.06 : 0.12, 1800);
+      else if (e.i === 'hat') noise(bgmBus, t, 0.03, e.soft ? 0.015 : 0.03, 7000);
+    });
+  }
+  function tick() {
+    if (!ctx || !compiled) return;
+    while (nextTime < ctx.currentTime + 0.12) {
+      playStep(compiled.steps[stepIdx], nextTime, compiled.stepDur);
+      nextTime += compiled.stepDur;
+      stepIdx++;
+      if (stepIdx >= compiled.steps.length) {
+        if (compiled.loop) stepIdx = 0;
+        else { const nx = after; stopSong(); if (nx) startSong(nx, null, nextTime); return; }
+      }
+    }
+  }
+  function stopSong() { clearInterval(timer); timer = 0; compiled = null; playing = null; after = null; }
+  function startSong(name, then, at) {
+    stopSong();
+    if (!ctx || !prefs.bgm || !SONGS[name]) { playing = null; return; }
+    compiled = compile(name); playing = name; after = then || null;
+    stepIdx = 0; nextTime = Math.max(at || 0, ctx.currentTime + 0.05);
+    timer = setInterval(tick, 25); tick();
+  }
+
+  /* 効果音 */
+  const SFX = {
+    click: (t) => { tone(sfxBus, 0.5, 1320, t, 0.04, 0.10); },
+    select: (t) => { tone(sfxBus, 0.25, 1046.5, t, 0.04, 0.10); tone(sfxBus, 0.25, 1568, t + 0.045, 0.06, 0.10); },
+    tick: (t) => { tone(sfxBus, 0.125, 1760, t, 0.015, 0.05); },
+    confirm: (t) => { [784, 1046.5, 1318.5].forEach((f, i) => tone(sfxBus, 0.25, f, t + i * 0.05, 0.06, 0.11)); },
+    deliver: (t) => { tone(sfxBus, 0.5, 220, t, 0.45, 0.10, 1760); noise(sfxBus, t, 0.35, 0.05, 2500); },
+    coin: (t) => { tone(sfxBus, 0.5, 987.8, t, 0.07, 0.12); tone(sfxBus, 0.5, 1318.5, t + 0.07, 0.25, 0.12); },
+    sparkle: (t) => { [1568, 2093, 2637, 3136].forEach((f, i) => tone(sfxBus, 0.125, f, t + i * 0.04, 0.05, 0.07)); },
+    reveal: (t) => { [523.3, 659.3, 784, 1046.5].forEach((f, i) => tone(sfxBus, 0.25, f, t + i * 0.035, 0.05, 0.08)); },
+    back: (t) => { tone(sfxBus, 0.5, 880, t, 0.04, 0.09); tone(sfxBus, 0.5, 587.3, t + 0.045, 0.06, 0.09); },
+    toggle: (t) => { tone(sfxBus, 0.25, 1174.7, t, 0.05, 0.10); }
+  };
+  let lastTick = 0;
+  function sfx(name) {
+    if (!ctx || !unlocked || !prefs.sfx || !SFX[name]) return;
+    if (name === 'tick') { const now = performance.now(); if (now - lastTick < 60) return; lastTick = now; }
+    try { SFX[name](ctx.currentTime + 0.005); } catch (e) { /* 音が鳴らなくてもゲームは続ける */ }
+  }
+
+  /* 画面に合わせてBGMを切り替える（同じ曲なら続けて流す） */
+  function scene(name, opts) {
+    wanted = { name: name, jingle: opts && opts.jingle };
+    if (!ctx || !unlocked) return;
+    if (!prefs.bgm) { stopSong(); return; }
+    if (wanted.jingle) startSong(wanted.jingle, name);
+    else if (playing !== name && !(after === name)) startSong(name);
+  }
+  function unlock() {
+    if (unlocked) return;
+    if (!init()) return;
+    unlocked = true;
+    try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) { /* noop */ }
+    if (wanted) scene(wanted.name);
+  }
+  function toggle(kind) {
+    prefs[kind] = !prefs[kind]; savePrefs();
+    unlock();
+    if (kind === 'bgm') { if (prefs.bgm && wanted) startSong(wanted.name); if (!prefs.bgm) stopSong(); }
+    if (kind === 'sfx' && prefs.sfx) sfx('toggle');
+    renderButtons();
+  }
+  function renderButtons() {
+    [['bgm', '♪ BGM'], ['sfx', '効果音']].forEach(([k, label]) => {
+      const b = document.getElementById('snd-' + k); if (!b) return;
+      b.setAttribute('aria-pressed', prefs[k] ? 'true' : 'false');
+      b.innerHTML = label + ' <b>' + (prefs[k] ? 'ON' : 'OFF') + '</b>';
+    });
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    try { if (document.hidden) ctx.suspend(); else ctx.resume(); } catch (e) { /* noop */ }
+  });
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlock, { capture: true, passive: true }));
+  return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile };
+})();
+const SCREEN_MUSIC = { intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
+
+/* =====================================================================
    9. イベント処理
    ===================================================================== */
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
   const act = el.getAttribute('data-action');
+  if (act === 'toggle-bgm' || act === 'toggle-sfx') { Sound.toggle(act === 'toggle-bgm' ? 'bgm' : 'sfx'); return; }
+  const SFX_FOR = { deliver: 'deliver', start: 'confirm', analyze: 'confirm', 'to-next': 'confirm', 'next-round': 'confirm', ending: 'confirm', report: 'confirm', 'reveal-all': 'reveal', 'tut-prev': 'back', 'view-analysis': 'back', 'view-run': 'back', 'back-plan': 'back' };
+  Sound.sfx(SFX_FOR[act] || 'click');
   const rd = Number(el.getAttribute('data-round')) || state.viewRound;
   switch (act) {
     case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
@@ -1759,6 +1980,7 @@ document.addEventListener('input', (e) => {
   if (t && t.matches('input[type=range][data-media]')) {
     if (state.results[state.viewRound]) return;
     setBudget(t.getAttribute('data-media'), Number(t.value));
+    Sound.sfx('tick');
     updatePlanReadouts();
   }
 });
@@ -1767,6 +1989,7 @@ document.addEventListener('change', (e) => {
   if (!t || t.type !== 'radio') return;
   const p = state.plans[state.viewRound];
   if (!p || state.results[state.viewRound]) return;
+  Sound.sfx('select');
   if (t.name === 'msg') p.msg = t.value;
   if (t.name === 'target' && state.viewRound > 1) p.target = t.value;
   updatePlanReadouts();
@@ -1783,6 +2006,7 @@ window.addEventListener('resize', () => {
   }, 200);
 });
 
+Sound.renderButtons();
 render();
 </script>
 </body>
