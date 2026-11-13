@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RETAIL MEDIA QUEST</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: 固定トップバー（ROUND・進行状況）＋ 16:9を意識した中央ステージ ＋ 注意書きフッター */
+:root{
+  --bg:#f6f3ec;
+  --surface:#fffdf9;
+  --surface-2:#efe9de;
+  --line:#e0d8ca;
+  --navy:#132a4f;
+  --navy-2:#2a4878;
+  --ink:#18213a;
+  --muted:#5a6378;
+  --mint:#2bb39b;
+  --mint-ink:#0d7766;
+  --mint-soft:#dcf2ec;
+  --coral:#ee6a4d;
+  --coral-ink:#b8432a;
+  --coral-soft:#fde6df;
+  --gold:#c8952a;
+  --gold-ink:#8a620c;
+  --gold-soft:#f6ecd3;
+  --focus:#1f6fd1;
+  --font-body:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
+  --font-num:"Avenir Next","Segoe UI","Helvetica Neue",Arial,"Hiragino Sans","Noto Sans JP",sans-serif;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(19,42,79,.06),0 10px 28px rgba(19,42,79,.07);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--font-body);font-size:14px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;line-height:1.35;text-wrap:balance;color:var(--navy)}
+p{margin:0}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+  background:var(--navy);color:#fff;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--navy)}
+.topbar-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--mint);position:relative;flex:none}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--navy);border-radius:2px}
+.brand-mark::before{left:7px;bottom:7px;width:4px;height:9px}
+.brand-mark::after{left:13px;bottom:7px;width:4px;height:15px;box-shadow:6px 4px 0 0 var(--navy)}
+.brand strong{display:block;font-family:var(--font-num);font-size:15px;letter-spacing:.14em;font-weight:700}
+.brand span{display:block;font-size:11px;opacity:.78;letter-spacing:.04em}
+.rounds{display:flex;gap:6px;margin-left:auto}
+.round-pill{font-family:var(--font-num);font-size:11px;letter-spacing:.1em;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.28);color:rgba(255,255,255,.7);white-space:nowrap}
+.round-pill.is-current{background:var(--mint);border-color:var(--mint);color:var(--navy);font-weight:700}
+.round-pill.is-done{color:#fff;border-color:rgba(255,255,255,.6)}
+.round-pill.is-done::before{content:"✓ "}
+.progress{list-style:none;margin:0;padding:0;display:flex;gap:4px;flex-wrap:wrap;width:100%}
+.progress li{flex:1 1 0;min-width:70px;font-size:11px;padding:4px 6px 0;border-top:3px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress li.is-done{border-top-color:var(--mint);color:rgba(255,255,255,.85)}
+.progress li.is-current{border-top-color:#fff;color:#fff;font-weight:700}
+.progress li .n{font-family:var(--font-num);margin-right:4px;opacity:.8}
+
+/* ---------- Stage ---------- */
+.stage-wrap{
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:22px 28px;
+}
+#stage{max-width:1280px;margin:0 auto;min-height:calc(min(1280px,100vw) * 0.5);outline:none;transition:opacity .28s ease,transform .28s ease}
+#stage.is-leaving{opacity:0;transform:translateY(6px)}
+#stage.is-entering{opacity:0;transform:translateY(-6px);transition:none}
+.screen{display:flex;flex-direction:column;gap:18px}
+.screen-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 20px;justify-content:space-between}
+.screen-head .titles{min-width:0;display:flex;flex-direction:column;gap:4px}
+.eyebrow{font-family:var(--font-num);font-size:11px;letter-spacing:.16em;color:var(--mint-ink);font-weight:700;text-transform:uppercase}
+.screen-head h2{font-size:clamp(20px,2.4vw,28px);outline:none}
+.lead{color:var(--muted);max-width:70ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);min-width:0}
+.panel h3{font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stepno{font-family:var(--font-num);font-size:11px;width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;background:var(--navy);color:#fff;flex:none}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.tiny{font-size:11px}
+
+/* ---------- Buttons ---------- */
+.btn{
+  appearance:none;border:1px solid var(--navy);background:var(--surface);color:var(--navy);
+  padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
+  transition:background .15s ease,color .15s ease,transform .08s ease,box-shadow .15s ease;
+}
+.btn:hover{background:var(--surface-2)}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.42;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-2)}
+.btn-accent{background:var(--coral);border-color:var(--coral);color:#fff}
+.btn-accent:hover{background:var(--coral-ink);border-color:var(--coral-ink)}
+.btn-mint{background:var(--mint);border-color:var(--mint);color:var(--navy)}
+.btn-mint:hover{background:#25a08b}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--navy-2);text-decoration:underline;text-underline-offset:3px;padding-inline:8px}
+.btn-ghost:hover{background:var(--surface-2)}
+.btn-sm{min-height:34px;padding:6px 12px;font-size:12px}
+.btn-lg{min-height:52px;padding:12px 26px;font-size:16px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.actions.end{justify-content:flex-end}
+.actions.between{justify-content:space-between}
+
+/* ---------- Tutorial ---------- */
+.intro{display:grid;grid-template-columns:1.05fr 1fr;gap:24px;align-items:stretch}
+.intro-hero{background:var(--navy);color:#fff;border-radius:14px;padding:clamp(22px,3.4vw,44px);display:flex;flex-direction:column;justify-content:space-between;gap:24px;position:relative;overflow:hidden;min-width:0}
+.intro-hero h1{color:#fff;font-family:var(--font-num);font-size:clamp(28px,4.4vw,52px);letter-spacing:.06em;line-height:1.08;font-weight:800}
+.intro-hero .sub{font-size:clamp(15px,1.6vw,19px);color:var(--mint);font-weight:700;margin-top:10px}
+.intro-hero .role{font-size:13px;opacity:.85;max-width:44ch}
+.intro-hero canvas{width:100%;height:120px;display:block}
+.brand-card{display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.25);padding:8px 12px;border-radius:8px;font-size:12px;width:fit-content}
+.brand-card b{font-family:var(--font-num);letter-spacing:.2em;font-size:15px;color:var(--mint)}
+.tut{display:flex;flex-direction:column;gap:16px}
+.tut-card{flex:1;display:flex;flex-direction:column;gap:14px;justify-content:center}
+.tut-card .big-n{font-family:var(--font-num);font-size:56px;font-weight:800;color:var(--mint);line-height:1}
+.tut-card h2{font-size:clamp(22px,2.6vw,30px)}
+.tut-card p{font-size:15px;max-width:42ch}
+.tut-visual{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);padding:3px 10px;border-radius:99px;font-size:12px;white-space:nowrap}
+.chip.mint{background:var(--mint-soft);border-color:#b7e4d9;color:var(--mint-ink)}
+.chip.coral{background:var(--coral-soft);border-color:#f6c4b7;color:var(--coral-ink)}
+.chip.gold{background:var(--gold-soft);border-color:#ead59e;color:var(--gold-ink)}
+.chip.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+.dots{display:flex;gap:8px}
+.dots span{width:28px;height:4px;border-radius:2px;background:var(--line)}
+.dots span.on{background:var(--navy)}
+
+/* ---------- Plan ---------- */
+.plan-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:16px;align-items:start}
+.media-row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.media-row:last-of-type{border-bottom:none}
+.media-name{font-weight:700;display:flex;align-items:center;gap:8px;color:var(--navy)}
+.media-ico{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;font-family:var(--font-num);flex:none}
+.ico-tv{background:var(--navy-2)}
+.ico-dooh{background:var(--mint-ink)}
+.ico-sig{background:var(--coral-ink)}
+.media-val{text-align:right;font-weight:800;font-size:18px;color:var(--navy)}
+.media-val small{font-size:11px;font-weight:400;color:var(--muted)}
+.media-tags{grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap}
+.media-tags .chip{font-size:11px;padding:1px 8px}
+input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:28px;cursor:pointer}
+.media-reach{grid-column:1 / -1;font-size:12px;color:var(--muted)}
+.alloc-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--surface-2);margin-top:10px}
+.alloc-bar span{display:block;height:100%;transition:width .25s ease}
+.sum-badge{margin-left:auto;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--mint-soft);color:var(--mint-ink)}
+.opt-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opt{position:relative;display:block;cursor:pointer}
+.opt input{position:absolute;opacity:0;width:1px;height:1px}
+.opt .box{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);transition:border-color .15s,background .15s,box-shadow .15s}
+.opt:hover .box{border-color:var(--navy-2)}
+.opt input:checked + .box{border-color:var(--navy);background:#eef2f8;box-shadow:inset 0 0 0 1px var(--navy)}
+.opt input:focus-visible + .box{outline:3px solid var(--focus);outline-offset:2px}
+.radio-ind{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted);flex:none;margin-top:3px;display:grid;place-items:center}
+.opt input:checked + .box .radio-ind{border-color:var(--navy)}
+.opt input:checked + .box .radio-ind::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--navy)}
+.opt .t{font-weight:700;color:var(--navy);display:block}
+.opt .d{font-size:12px;color:var(--muted);display:block}
+.opt .copy{font-size:13px;display:block;color:var(--ink)}
+.plan-foot{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.summary-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prev-hint{border-left:3px solid var(--mint);background:var(--mint-soft);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px}
+.prev-hint b{color:var(--mint-ink)}
+
+/* ---------- Funnel ---------- */
+.funnel-panel{padding:16px 18px 14px}
+.stage-labels,.stage-counters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.stage-labels div{font-size:12px;font-weight:700;color:var(--navy);text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.stage-labels .k{font-family:var(--font-num);font-size:10px;letter-spacing:.12em;color:var(--muted);font-weight:400}
+.funnel-canvas{width:100%;height:clamp(170px,22vw,250px);display:block}
+.stage-counters .cnt{text-align:center;background:var(--surface-2);border-radius:8px;padding:8px 4px;min-width:0}
+.stage-counters .v{font-size:clamp(14px,1.7vw,20px);font-weight:800;color:var(--navy);display:block;white-space:nowrap}
+.stage-counters .r{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-counters .cnt.buy .v{color:var(--coral-ink)}
+.stage-counters .cnt.ltv .v{color:var(--gold-ink)}
+.stage-counters .cnt.locked .v{color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:50%}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.kpi .l{font-size:12px;color:var(--muted);display:block}
+.kpi .v{font-size:clamp(20px,2.2vw,28px);font-weight:800;color:var(--navy);display:block;line-height:1.2;white-space:nowrap}
+.kpi .v small{font-size:13px;font-weight:700;margin-left:2px}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.coral .v{color:var(--coral-ink)}
+.kpi.gold .v{color:var(--gold-ink)}
+.kpi.mint .v{color:var(--mint-ink)}
+
+.question{background:var(--navy);color:#fff;border-radius:12px;padding:20px 22px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.question p{font-size:clamp(17px,2vw,23px);font-weight:700;color:#fff}
+.question .q-k{font-family:var(--font-num);color:var(--mint);font-size:11px;letter-spacing:.16em;display:block;margin-bottom:4px}
+.question .unlock{font-size:12px;color:var(--mint)}
+
+/* ---------- Doctor ---------- */
+.doctor{display:grid;grid-template-columns:64px 1fr;gap:14px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.doctor svg{width:64px;height:64px}
+.doctor .who{font-weight:800;color:var(--navy);font-size:13px;display:flex;gap:8px;align-items:center}
+.doctor .who span{font-family:var(--font-num);font-size:10px;letter-spacing:.14em;color:var(--mint-ink);font-weight:700}
+.doctor ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.doctor li{position:relative;padding-left:16px;font-size:14px}
+.doctor li::before{content:"";position:absolute;left:0;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--mint)}
+.doctor li.warn::before{background:var(--coral)}
+.doctor li.gold::before{background:var(--gold)}
+.doctor li{animation:say .4s ease both}
+@keyframes say{from{opacity:.0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+.bonus-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+/* ---------- Analysis ---------- */
+.an-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;grid-auto-flow:row dense}
+.an-card{position:relative;display:flex;flex-direction:column;gap:10px;min-height:220px}
+.an-card.wide{grid-column:1 / -1}
+.an-card.half{grid-column:span 2}
+.an-card h3 .idx{font-family:var(--font-num);font-size:11px;color:var(--muted);font-weight:400}
+.an-card .lockbox{flex:1;display:grid;place-items:center;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:12px;text-align:center;padding:10px;background:repeating-linear-gradient(135deg,transparent 0 8px,rgba(19,42,79,.025) 8px 16px)}
+.an-card.is-revealed .lockbox{display:none}
+.an-card .content{display:none;flex-direction:column;gap:10px}
+.an-card.is-revealed .content{display:flex;animation:reveal .45s ease both}
+@keyframes reveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.an-card.is-analyzing .lockbox::after{content:"";width:28px;height:4px;border-radius:2px;background:var(--mint);display:block;margin:8px auto 0;animation:scan .8s ease-in-out infinite alternate}
+@keyframes scan{from{transform:translateX(-20px)}to{transform:translateX(20px)}}
+.donut-wrap{display:grid;grid-template-columns:130px 1fr;gap:18px;align-items:center}
+.donut-wrap canvas{width:130px;height:130px}
+.legend-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:0}
+.legend-list li{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;font-size:13px}
+.legend-list .sw{width:14px;height:14px;display:grid;place-items:center;font-size:10px;color:#fff;border-radius:3px}
+.legend-list b{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.hbars{display:flex;flex-direction:column;gap:9px}
+.hbar{display:grid;grid-template-columns:minmax(80px,auto) 1fr 52px;gap:8px;align-items:center;font-size:12px}
+.hbar .track{display:block;height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.hbar .fill{display:block;height:100%;width:0;border-radius:6px;background:var(--navy-2);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.go .hbar .fill,.go .stack span{width:var(--w)}
+.hbar .val{text-align:right;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.stack{display:flex;height:26px;border-radius:6px;overflow:hidden;background:var(--surface-2)}
+.stack span{width:0;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.vbars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;height:140px;padding-top:4px}
+.vbar{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.vbar .colw{flex:1;width:70%;display:flex;align-items:flex-end;background:var(--surface-2);border-radius:6px 6px 0 0;overflow:hidden}
+.vbar .fill{display:block;width:100%;height:0;background:var(--navy-2);transition:height .9s cubic-bezier(.2,.8,.2,1)}
+.go .vbar .fill{height:var(--h)}
+.vbar .val{font-size:12px;font-weight:700;font-family:var(--font-num)}
+.vbar .lab{font-size:11px;color:var(--muted)}
+.path-table-wrap{overflow-x:auto}
+table.data{width:100%;border-collapse:collapse;font-size:12px;min-width:720px}
+table.data th,table.data td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.data th{font-weight:700;color:var(--muted);font-size:11px;background:var(--surface-2)}
+table.data th:first-child,table.data td:first-child{text-align:left}
+table.data td.path{font-weight:700;color:var(--navy)}
+table.data tr.best td{background:var(--mint-soft)}
+table.data .mini{display:inline-block;height:8px;border-radius:4px;background:var(--coral);vertical-align:middle;margin-right:6px}
+.big-stat{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.big-stat .v{font-size:40px;font-weight:800;line-height:1;color:var(--gold-ink)}
+.big-stat .u{font-weight:700;color:var(--gold-ink)}
+.mini-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini-cards div{background:var(--surface-2);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);min-width:0}
+.mini-cards b{display:block;font-size:15px;color:var(--ink);font-family:var(--font-num)}
+.note{font-size:11px;color:var(--muted);line-height:1.6}
+.disclaimer{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:2px}
+
+/* ---------- Next / compare ---------- */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.hint-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.hint{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface);display:grid;grid-template-columns:30px 1fr;gap:10px}
+.hint .hi{width:28px;height:28px;border-radius:50%;background:var(--gold-soft);color:var(--gold-ink);display:grid;place-items:center;font-weight:800;font-family:var(--font-num);font-size:12px}
+.hint b{color:var(--navy);display:block}
+.hint span{font-size:13px;color:var(--muted)}
+table.cmp{width:100%;border-collapse:collapse;font-size:13px}
+table.cmp th,table.cmp td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.cmp th{font-size:11px;color:var(--muted);background:var(--surface-2)}
+table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--navy);font-weight:700}
+.delta{font-weight:800;font-family:var(--font-num)}
+.delta.up{color:var(--mint-ink)}
+.delta.down{color:var(--coral-ink)}
+.delta.flat{color:var(--muted)}
+.cmp-wrap{overflow-x:auto}
+
+/* ---------- Final / score ---------- */
+.final-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+.score-hero{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.score-ring{width:150px;height:150px;flex:none}
+.score-title{display:flex;flex-direction:column;gap:6px;min-width:0}
+.score-title .rank{font-size:clamp(20px,2.4vw,28px);font-weight:800;color:var(--navy)}
+.score-items{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.score-item{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:13px}
+.score-item .track{display:block;height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.score-item .fill{display:block;height:100%;width:0;background:var(--mint);transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.go .score-item .fill{width:var(--w)}
+.score-item .pt{text-align:right;font-weight:800;font-family:var(--font-num)}
+
+/* ---------- Ending ---------- */
+.ending{min-height:540px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:28px;padding:30px 0;background:var(--navy);border-radius:14px;color:#fff;padding-inline:20px}
+.ending h2{color:#fff;font-size:clamp(28px,4.6vw,56px);letter-spacing:.04em;animation:rise .8s ease both}
+.flow{list-style:none;margin:0;padding:0;display:flex;align-items:stretch;gap:0;flex-wrap:wrap;justify-content:center;max-width:1100px}
+.flow li{display:flex;align-items:center;opacity:0;animation:rise .6s ease both}
+.flow .step{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px;max-width:180px}
+.flow .step .k{display:block;font-family:var(--font-num);font-size:10px;letter-spacing:.14em;color:var(--mint);font-weight:400}
+.flow li:last-child .step{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.flow li:last-child .step .k{color:var(--navy)}
+.flow .arr{color:var(--mint);font-size:20px;padding:0 8px}
+.ending .closing{max-width:56ch;font-size:clamp(14px,1.5vw,17px);line-height:1.9;opacity:0;animation:rise .8s ease both;animation-delay:3.4s;color:#fff}
+.ending .actions{opacity:0;animation:rise .6s ease both;animation-delay:3.9s}
+.ending .btn{border-color:#fff}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- Report ---------- */
+.report{display:flex;flex-direction:column;gap:14px}
+.report-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;border-bottom:2px solid var(--navy);padding-bottom:10px}
+.report-head h2{font-size:22px}
+.report-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;align-items:start}
+.report table.cmp{font-size:12px}
+.report table.cmp td,.report table.cmp th{padding:6px 8px}
+.report .section-t{font-size:12px;font-weight:800;color:var(--navy);letter-spacing:.06em;margin-bottom:6px;display:block}
+.report ul.plain{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.print-note{font-size:11px;color:var(--muted)}
+
+/* ---------- Footer ---------- */
+.foot{
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:14px 20px;border-top:1px solid var(--line);background:var(--surface-2)
+}
+.foot-inner{max-width:1280px;margin:0 auto;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.foot-inner strong{color:var(--navy)}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1100px){
+  .plan-grid{grid-template-columns:1fr 1fr}
+  .plan-grid .panel.budget{grid-column:1 / -1}
+  .an-grid{grid-template-columns:repeat(2,1fr)}
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .final-grid,.report-grid{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .intro,.plan-grid,.two-col{grid-template-columns:1fr}
+  .plan-foot{grid-template-columns:1fr}
+  .an-grid{grid-template-columns:1fr}
+  .an-card.wide,.an-card.half{grid-column:auto}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .stage-labels div{font-size:10px}
+  .stage-counters .r{display:none}
+  .score-item{grid-template-columns:110px 1fr 56px}
+  .rounds{margin-left:0}
+  .progress li{min-width:44px;font-size:10px}
+  .progress li .t{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}
+  .flow li,.ending .closing,.ending .actions{opacity:1}
+}
+
+/* ---------- Print ---------- */
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff;font-size:11px}
+  body::before{display:none}
+  .topbar,.no-print,.btn{display:none!important}
+  .stage-wrap{padding:0}
+  #stage{max-width:none;min-height:0}
+  .panel{box-shadow:none;break-inside:avoid}
+  .foot{background:#fff;border-top:1px solid #ccc;padding:6px 0}
+  .report-grid{grid-template-columns:1.35fr 1fr}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div><strong>RETAIL MEDIA QUEST</strong><span>広告接触を、購買とLTVにつなげよう</span></div>
+    </div>
+    <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
+    <ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol>
+  </div>
+</header>
+
+<div class="stage-wrap">
+  <main id="stage" tabindex="-1" aria-live="polite"></main>
+</div>
+
+<footer class="foot">
+  <div class="foot-inner">
+    <strong>データに関する注意</strong>
+    <span>本ゲームの数値・分析結果は、リテールメディアの仕組みを理解するためのシミュレーションです。</span>
+    <span>広告接触は、放映ログ、視聴データ、位置情報、店内滞在情報などから推定します。</span>
+    <span>購買は、連携可能な会員ID付き購買データなどによって確認します。</span>
+    <span>属性・行動・興味関心の分析は、本人同意のもとで連携可能なデータの範囲で行う想定です。</span>
+    <span>ブランドスイッチは、同一カテゴリーの過去購買履歴に基づく候補判定です。</span>
+  </div>
+</footer>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. 定数（調整可能なパラメータ）
+   ===================================================================== */
+/*SIM-START*/
+const CONFIG = {
+  BUDGET_TOTAL: 1000,          // 1ラウンドの予算（万円）
+  BUDGET_STEP: 10,             // スライダーの刻み（万円）
+  REACH_PER_MILLION: { tv: 30000, dooh: 20000, sig: 8000 }, // 100万円あたりの推定接触者数
+  POPULATION: 1200000,         // 配信エリアの想定生活者数
+  PRECISION: { tv: 0.2, dooh: 0.6, doohStation: 0.85 }, // ターゲット精度（0=全体に均等、1=ターゲットに集中）
+  BASE_VISIT: 0.04,            // 広告接触者の基本来店率
+  MEDIA_VISIT: { tv: 0.9, dooh: 1.6 }, // 媒体別の来店しやすさ
+  TV_MAX_REACH: 0.85,          // TVCMの到達上限
+  SIG_CONTACT_BASE: 0.35,      // 来店者の店内サイネージ接触率（基準予算時）
+  SIG_REF_BUDGET: 333,         // サイネージ接触率35%となる基準予算（万円）
+  SIG_CONTACT_MAX: 0.75,
+  BUY_SIG: 0.12,               // サイネージ接触者の基本購入率
+  BUY_NOSIG: 0.04,             // サイネージ非接触者の基本購入率
+  BUY_UNLINKED: 0.03,          // 広告接触を確認できない来店者の購入率
+  ORGANIC_SHOPPERS: 8000,      // 店外広告に接触していないヘアケア売場来店者
+  OVERLAP: { tvDoohVisit: 1.25, doohSig: 1.40, tvSig: 1.25, allSig: 1.70 },
+  BONUS: { f2030Trial: 1.25, hairFunc: 1.30, newcandTrial: 1.35, repeatCont: 1.40, stationDooh: 1.30, stationDoohShare: 0.40, competitorFunc: 1.30 },
+  NOISE: 0.05,                 // ±5%のランダム変動
+  REPURCHASE_BASE: { new: 0.20, rep: 0.46, sw: 0.17 }, // 90日以内の再購入率（基準）
+  REPURCHASE_SIG: 1.10,        // 店内サイネージ接触による再購入率の上乗せ
+  UNIT_PRICE: 3300,            // 商品単価（円・シャンプー＆トリートメント）
+  LTV_FUTURE_PURCHASES: 5,   // 90日以内に再購入した人の、その後12か月の平均追加購入回数
+  SCORE: {
+    visit: [5500, 11500], buyers: [600, 1550], newB: [250, 700], sw: [120, 520],
+    repurchase: [0.22, 0.40], roas: [0.5, 1.4]
+  }
+};
+
+const SEGMENTS = [
+  { id: 'A', name: '20〜30代女性・駅前利用', short: '20-30代女性・駅前', share: 0.25, mix: [0.72, 0.18, 0.10],
+    prof: { f: 0.92, m: 0.06, age: [0.46, 0.44, 0.08, 0.02], station: 0.82, drug: 0.55, hair: 0.55, beauty: 0.74 } },
+  { id: 'B', name: '30〜40代女性・ヘアケア関心', short: '30-40代女性・ヘアケア関心', share: 0.25, mix: [0.48, 0.22, 0.30],
+    prof: { f: 0.90, m: 0.08, age: [0.04, 0.46, 0.44, 0.06], station: 0.30, drug: 0.66, hair: 0.95, beauty: 0.52 } },
+  { id: 'C', name: '既存ブランド購入者', short: '既存ブランド購入者', share: 0.20, mix: [0.08, 0.92, 0.00],
+    prof: { f: 0.74, m: 0.23, age: [0.15, 0.35, 0.30, 0.20], station: 0.36, drug: 0.62, hair: 0.70, beauty: 0.36 } },
+  { id: 'D', name: '競合ブランド購入者', short: '競合ブランド購入者', share: 0.20, mix: [0.18, 0.07, 0.75],
+    prof: { f: 0.70, m: 0.27, age: [0.18, 0.32, 0.30, 0.20], station: 0.36, drug: 0.56, hair: 0.76, beauty: 0.40 } },
+  { id: 'E', name: 'その他', short: 'その他', share: 0.10, mix: [0.62, 0.25, 0.13],
+    prof: { f: 0.45, m: 0.50, age: [0.14, 0.20, 0.26, 0.40], station: 0.25, drug: 0.34, hair: 0.25, beauty: 0.20 } }
+];
+
+const MESSAGES = [
+  { id: 'aware', name: '認知訴求', copy: '「新しいヘアケア習慣、はじまる」', desc: '幅広い認知づくりに向く',
+    aff: [1.0, 0.95, 0.9, 0.9, 1.3], typeMod: { new: 1.05, rep: 1.0, sw: 1.0 }, repMod: { new: 1.0, rep: 1.0, sw: 1.0 } },
+  { id: 'func', name: '機能訴求', copy: '「洗い上がり、指どおりなめらか」', desc: '商品の違いを具体的に伝える',
+    aff: [1.0, 1.3, 1.0, 1.25, 0.9], typeMod: { new: 1.0, rep: 1.0, sw: 1.10 }, repMod: { new: 1.08, rep: 1.0, sw: 1.25 } },
+  { id: 'trial', name: 'トライアル訴求', copy: '「今なら初回購入キャンペーン」', desc: '初めての購入を後押しする',
+    aff: [1.2, 1.05, 0.85, 1.2, 1.0], typeMod: { new: 1.12, rep: 0.95, sw: 1.05 }, repMod: { new: 0.85, rep: 1.0, sw: 0.9 } },
+  { id: 'cont', name: '継続利用訴求', copy: '「使うほど、毎日の髪に自信」', desc: '使い続ける理由を伝える',
+    aff: [0.85, 0.9, 1.4, 0.8, 0.85], typeMod: { new: 0.9, rep: 1.12, sw: 0.9 }, repMod: { new: 1.15, rep: 1.15, sw: 1.15 } }
+];
+
+const TARGETS = [
+  { id: 'broad', name: '幅広い生活者', desc: 'エリア内の生活者全体に配信', dist: [0.25, 0.25, 0.20, 0.20, 0.10] },
+  { id: 'f2030', name: '20〜30代女性', desc: '年代・性別で絞り込み', dist: [0.55, 0.28, 0.06, 0.06, 0.05] },
+  { id: 'station', name: '平日夕方に駅前を利用する人', desc: '位置情報・時間帯で絞り込み', dist: [0.58, 0.12, 0.10, 0.10, 0.10] },
+  { id: 'haircare', name: 'ヘアケア関心層', desc: '興味関心データで絞り込み', dist: [0.15, 0.48, 0.07, 0.25, 0.05] },
+  { id: 'newcand', name: 'ブランド新規購入候補', desc: 'MINTÉ未購入のカテゴリー購入者', dist: [0.27, 0.25, 0.00, 0.43, 0.05] },
+  { id: 'repeat', name: '過去購入者・リピート候補', desc: 'MINTÉの購入履歴がある人', dist: [0.06, 0.06, 0.76, 0.06, 0.06] }
+];
+
+const PATTERNS = [
+  { key: 'tv', label: 'TVCMのみ' },
+  { key: 'dooh', label: 'DOOHのみ' },
+  { key: 'tvdooh', label: 'TVCM＋DOOH' },
+  { key: 'sig', label: '店内サイネージのみ' },
+  { key: 'tvsig', label: 'TVCM＋店内サイネージ' },
+  { key: 'doohsig', label: 'DOOH＋店内サイネージ' },
+  { key: 'all', label: 'TVCM＋DOOH＋店内サイネージ' },
+  { key: 'none', label: '広告接触機会を確認できなかった購入者' }
+];
+
+/* =====================================================================
+   2. 汎用ユーティリティ（数値の安全化）
+   ===================================================================== */
+function safe(n) { return (typeof n === 'number' && isFinite(n) && n > 0) ? n : 0; }
+function clamp(n, lo, hi) { n = Number(n); if (!isFinite(n)) n = lo; return Math.min(hi, Math.max(lo, n)); }
+function div(a, b) { return safe(b) > 0 ? safe(a) / b : 0; }
+function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
+function mulberry32(a) {
+  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+/* seedとキーから決まる±5%の変動。同じseed・同じラウンドなら、同じ選択でほぼ同じ結果になる */
+function noise(seed, key) { const r = mulberry32((seed ^ hashStr(key)) >>> 0)(); return 1 + (r * 2 - 1) * CONFIG.NOISE; }
+function mixShare(natural, target, precision) { return (1 - precision) * natural + precision * target; }
+
+/* =====================================================================
+   3. シミュレーション（計算処理。UIからは独立）
+   ===================================================================== */
+function detectBonuses(plan) {
+  const B = CONFIG.BONUS;
+  const b = { newMult: 1, hair: false, repeatCont: false, station: false, competitorFunc: false, list: [] };
+  const doohShare = div(plan.dooh, CONFIG.BUDGET_TOTAL);
+  if (plan.target === 'f2030' && plan.msg === 'trial') { b.newMult *= B.f2030Trial; b.list.push('20〜30代女性 × トライアル訴求：新規購入 ×1.25'); }
+  if (plan.target === 'haircare' && plan.msg === 'func') { b.hair = true; b.list.push('ヘアケア関心層 × 機能訴求：購入率 ×1.30'); }
+  if (plan.target === 'newcand' && plan.msg === 'trial') { b.newMult *= B.newcandTrial; b.list.push('ブランド新規購入候補 × トライアル訴求：新規購入 ×1.35'); }
+  if (plan.target === 'repeat' && plan.msg === 'cont') { b.repeatCont = true; b.list.push('リピート候補 × 継続利用訴求：再購入率 ×1.40'); }
+  if (plan.target === 'station' && doohShare >= B.stationDoohShare) { b.station = true; b.list.push('平日夕方の駅前利用者 × DOOH重点配分：来店率 ×1.30'); }
+  if (plan.msg === 'func') { b.competitorFunc = true; b.list.push('競合ブランド購入者 × 機能訴求：スイッチ候補 ×1.30'); }
+  return b;
+}
+
+function simulate(planIn, seed, round) {
+  const C = CONFIG;
+  const plan = {
+    tv: clamp(planIn.tv, 0, C.BUDGET_TOTAL), dooh: clamp(planIn.dooh, 0, C.BUDGET_TOTAL), sig: clamp(planIn.sig, 0, C.BUDGET_TOTAL),
+    msg: planIn.msg || 'aware', target: planIn.target || 'broad'
+  };
+  const msg = MESSAGES.find(m => m.id === plan.msg) || MESSAGES[0];
+  const target = TARGETS.find(t => t.id === plan.target) || TARGETS[0];
+  const bonus = detectBonuses(plan);
+  const reachTV = plan.tv / 100 * C.REACH_PER_MILLION.tv;
+  const reachDO = plan.dooh / 100 * C.REACH_PER_MILLION.dooh;
+  const sigCapacity = plan.sig / 100 * C.REACH_PER_MILLION.sig;
+  const c = plan.sig > 0 ? Math.min(C.SIG_CONTACT_MAX, C.SIG_CONTACT_BASE * Math.sqrt(plan.sig / C.SIG_REF_BUDGET)) : 0;
+  const precDO = target.id === 'station' ? C.PRECISION.doohStation : C.PRECISION.dooh;
+
+  const pat = {};
+  PATTERNS.forEach(p => { pat[p.key] = { key: p.key, label: p.label, contacts: 0, visitors: 0, buyers: 0, newB: 0, repB: 0, swB: 0, repurchasers: 0 }; });
+  const seg = SEGMENTS.map(s => ({ id: s.id, name: s.name, short: s.short, contacts: 0, visitors: 0, buyers: 0, newB: 0, repB: 0, swB: 0, repurchasers: 0, doohBuyers: 0, sigBuyers: 0 }));
+  let uniqueOut = 0, reachTVu = 0, reachDOu = 0;
+
+  SEGMENTS.forEach((S, s) => {
+    const pool = C.POPULATION * S.share;
+    const wTV = mixShare(S.share, target.dist[s], C.PRECISION.tv);
+    const wDO = mixShare(S.share, target.dist[s], precDO);
+    // 到達上限：TVCMは視聴者の85%、DOOHは駅前・生活動線を通る人（セグメントごとの駅前利用率）まで
+    const maxTV = C.TV_MAX_REACH, maxDO = S.prof.station;
+    const pTV = maxTV * (1 - Math.exp(-div(reachTV * wTV, pool * maxTV)));
+    const pDO = maxDO * (1 - Math.exp(-div(reachDO * wDO, pool * maxDO)));
+    const ex = { tv: pool * pTV * (1 - pDO), dooh: pool * pDO * (1 - pTV), tvdooh: pool * pTV * pDO };
+    uniqueOut += ex.tv + ex.dooh + ex.tvdooh;
+    reachTVu += pool * pTV; reachDOu += pool * pDO;
+    const aff = msg.aff[s];
+    const nv = noise(seed, round + ':visit:' + s);
+    const nb = noise(seed, round + ':buy:' + s);
+
+    const visitRate = (o) => {
+      let r = C.BASE_VISIT * (o === 'tv' ? C.MEDIA_VISIT.tv : C.MEDIA_VISIT.dooh);
+      if (o === 'tvdooh') r *= C.OVERLAP.tvDoohVisit;
+      r *= Math.sqrt(aff);
+      if (s === 4 && o !== 'dooh') r *= 1.2;                 // 「その他」はTVCMの認知に反応
+      if (bonus.station && o !== 'tv') r *= C.BONUS.stationDooh;
+      return clamp(r * nv, 0, 0.5);
+    };
+    const buyRate = (o, sigSeen) => {
+      let r;
+      if (sigSeen) {
+        r = C.BUY_SIG * ({ org: 1, tv: C.OVERLAP.tvSig, dooh: C.OVERLAP.doohSig, tvdooh: C.OVERLAP.allSig })[o];
+        if (s === 0 && o !== 'tv' && o !== 'org') r *= 1.15; // 20〜30代女性・駅前はDOOH＋サイネージの重複に反応
+      } else {
+        r = o === 'org' ? C.BUY_UNLINKED : C.BUY_NOSIG;
+      }
+      const msgSeen = sigSeen || o !== 'org';
+      if (msgSeen) { r *= aff; if (bonus.hair) r *= C.BONUS.hairFunc; }
+      return clamp(r * nb, 0, 0.6);
+    };
+
+    const groups = [];
+    ['tv', 'dooh', 'tvdooh'].forEach(o => {
+      const v = ex[o] * visitRate(o);
+      const withSig = o === 'tv' ? 'tvsig' : (o === 'dooh' ? 'doohsig' : 'all');
+      groups.push({ pat: o, contacts: ex[o] * (1 - c), visitors: v * (1 - c), rate: buyRate(o, false), sig: false, msg: true, dooh: o !== 'tv' });
+      groups.push({ pat: withSig, contacts: ex[o] * c, visitors: v * c, rate: buyRate(o, true), sig: true, msg: true, dooh: o !== 'tv' });
+    });
+    const org = C.ORGANIC_SHOPPERS * S.share;
+    groups.push({ pat: 'sig', contacts: org * c, visitors: org * c, rate: buyRate('org', true), sig: true, msg: true, dooh: false });
+    groups.push({ pat: 'none', contacts: 0, visitors: org * (1 - c), rate: buyRate('org', false), sig: false, msg: false, dooh: false });
+
+    const nr = noise(seed, round + ':rep:' + s);
+    groups.forEach(g => {
+      const base = safe(g.visitors * g.rate);
+      let mN = 1, mR = 1, mW = 1;
+      if (g.msg) {
+        mN *= msg.typeMod.new * bonus.newMult; mR *= msg.typeMod.rep; mW *= msg.typeMod.sw;
+        if (bonus.competitorFunc && s === 3) mW *= C.BONUS.competitorFunc;
+      }
+      const nN = base * S.mix[0] * mN, nR = base * S.mix[1] * mR, nW = base * S.mix[2] * mW;
+      const rb = C.REPURCHASE_BASE;
+      let rN = rb.new, rR = rb.rep, rW = rb.sw;
+      if (g.sig) { rN *= C.REPURCHASE_SIG; rR *= C.REPURCHASE_SIG; rW *= C.REPURCHASE_SIG; }
+      if (g.msg) {
+        rN *= msg.repMod.new; rR *= msg.repMod.rep; rW *= msg.repMod.sw;
+        if (bonus.repeatCont) { rN *= C.BONUS.repeatCont; rR *= C.BONUS.repeatCont; rW *= C.BONUS.repeatCont; }
+      }
+      rN = clamp(rN * nr, 0, 0.85); rR = clamp(rR * nr, 0, 0.85); rW = clamp(rW * nr, 0, 0.85);
+      const buyers = nN + nR + nW;
+      const rep = nN * rN + nR * rR + nW * rW;
+      const P = pat[g.pat];
+      P.contacts += g.contacts; P.visitors += g.visitors; P.buyers += buyers; P.newB += nN; P.repB += nR; P.swB += nW; P.repurchasers += rep;
+      const Sg = seg[s];
+      Sg.visitors += g.visitors; Sg.buyers += buyers; Sg.newB += nN; Sg.repB += nR; Sg.swB += nW; Sg.repurchasers += rep;
+      if (g.dooh) Sg.doohBuyers += buyers;
+      if (g.sig) Sg.sigBuyers += buyers;
+    });
+    seg[s].contacts = ex.tv + ex.dooh + ex.tvdooh;
+  });
+
+  const patterns = PATTERNS.map(p => {
+    const P = pat[p.key];
+    return Object.assign(P, {
+      visitRate: p.key === 'none' ? 0 : (p.key === 'sig' ? 1 : div(P.visitors, P.contacts)),
+      buyRate: div(P.buyers, P.visitors), newRate: div(P.newB, P.buyers), swRate: div(P.swB, P.buyers), repRate: div(P.repurchasers, P.buyers)
+    });
+  });
+  const sum = (k) => patterns.reduce((a, p) => a + safe(p[k]), 0);
+  const buyers = sum('buyers');
+  const linked = patterns.filter(p => p.key !== 'none');
+  const visitors = linked.reduce((a, p) => a + safe(p.visitors), 0);
+  const buyersLinked = linked.reduce((a, p) => a + safe(p.buyers), 0);
+  const sigContacts = ['sig', 'tvsig', 'doohsig', 'all'].reduce((a, k) => a + safe(pat[k].visitors), 0);
+  const contacts = uniqueOut + safe(pat.sig.contacts);
+  const newB = sum('newB'), repB = sum('repB'), swB = sum('swB'), repurchasers = sum('repurchasers');
+  const repurchaseRate = div(repurchasers, buyers);
+  const ltvPerBuyer = C.UNIT_PRICE * (1 + repurchaseRate * C.LTV_FUTURE_PURCHASES);
+  const ltvTotal = buyers * ltvPerBuyer;
+  const spend = (plan.tv + plan.dooh + plan.sig) * 10000;
+
+  // 購入者の属性（セグメント構成から推定。接触経路によって行動属性が変化）
+  const w = seg.map(s => div(s.buyers, buyers));
+  const wsum = (fn) => SEGMENTS.reduce((a, S, i) => a + w[i] * fn(S.prof, i), 0);
+  const doohShareBuyers = div(seg.reduce((a, s) => a + s.doohBuyers, 0), buyers);
+  const sigShareBuyers = div(seg.reduce((a, s) => a + s.sigBuyers, 0), buyers);
+  const f = wsum(p => p.f), m = wsum(p => p.m);
+  const attrs = {
+    gender: { f: f, m: m, o: Math.max(0, 1 - f - m) },
+    age: [0, 1, 2, 3].map(i => wsum(p => p.age[i])),
+    station: clamp(wsum(p => p.station) + 0.22 * (doohShareBuyers - 0.35), 0.05, 0.95),
+    drug: clamp(wsum(p => p.drug) + 0.20 * (sigShareBuyers - 0.45), 0.05, 0.95),
+    hair: clamp(wsum(p => p.hair) * (plan.msg === 'func' ? 1.04 : 1), 0.05, 0.97),
+    beauty: clamp(wsum(p => p.beauty) * (plan.target === 'f2030' ? 1.05 : 1), 0.05, 0.95)
+  };
+
+  return {
+    round: round, plan: plan, bonuses: bonus.list, sigContactRate: c, sigCapacity: sigCapacity,
+    reach: { tv: reachTVu, dooh: reachDOu, sig: sigCapacity },
+    contacts: contacts, visitors: visitors, sigContacts: sigContacts, buyersLinked: buyersLinked, buyers: buyers,
+    unlinkedBuyers: safe(pat.none.buyers),
+    newB: newB, repB: repB, swB: swB, repurchasers: repurchasers,
+    visitRate: div(visitors, contacts), sigRate: div(sigContacts, visitors + safe(pat.none.visitors)), buyRate: div(buyersLinked, visitors),
+    newRate: div(newB, buyers), repShare: div(repB, buyers), swRate: div(swB, buyers),
+    repurchaseRate: repurchaseRate,
+    ltvPerBuyer: ltvPerBuyer, ltvTotal: ltvTotal, roas: div(ltvTotal, spend), cpa: div(spend, buyersLinked),
+    patterns: patterns, segments: seg, attrs: attrs
+  };
+}
+
+/* タイプ別の再購入率（新規・リピート・スイッチ候補） */
+function repurchaseByType(res) {
+  // パターン別の再購入者数をタイプ別に再計算するため、平均値を近似で求める
+  const plan = res.plan;
+  const msg = MESSAGES.find(m => m.id === plan.msg) || MESSAGES[0];
+  const b = CONFIG.REPURCHASE_BASE;
+  const sigW = div(res.sigContacts, res.visitors + 1);
+  const sigMul = 1 + (CONFIG.REPURCHASE_SIG - 1) * clamp(sigW, 0, 1);
+  const bonus = res.bonuses.some(t => t.indexOf('再購入率') >= 0) ? CONFIG.BONUS.repeatCont : 1;
+  const raw = { new: b.new * msg.repMod.new, rep: b.rep * msg.repMod.rep, sw: b.sw * msg.repMod.sw };
+  const est = { new: raw.new * sigMul * bonus, rep: raw.rep * sigMul * bonus, sw: raw.sw * sigMul * bonus };
+  // 全体の実測値と整合させるためにスケーリング
+  const estTotal = div(est.new * res.newB + est.rep * res.repB + est.sw * res.swB, res.buyers);
+  const k = estTotal > 0 ? res.repurchaseRate / estTotal : 1;
+  return { new: clamp(est.new * k, 0, 0.9), rep: clamp(est.rep * k, 0, 0.9), sw: clamp(est.sw * k, 0, 0.9) };
+}
+
+/* スコア計算（ROUND 3の成果で評価） */
+function computeScore(res) {
+  const S = CONFIG.SCORE;
+  const lin = (v, r) => clamp((safe(v) - r[0]) / (r[1] - r[0]), 0, 1);
+  const items = [
+    { key: 'visit', label: '来店獲得', max: 20, ratio: lin(res.visitors, S.visit) },
+    { key: 'buy', label: '購買獲得', max: 20, ratio: lin(res.buyers, S.buyers) },
+    { key: 'new', label: '新規顧客獲得', max: 20, ratio: lin(res.newB, S.newB) },
+    { key: 'sw', label: 'ブランドスイッチ候補獲得', max: 15, ratio: lin(res.swB, S.sw) },
+    { key: 'rep', label: '再購入率', max: 15, ratio: lin(res.repurchaseRate, S.repurchase) },
+    { key: 'roas', label: '広告費用対効果', max: 10, ratio: lin(res.roas, S.roas) }
+  ];
+  items.forEach(i => { i.pt = Math.round(i.ratio * i.max); });
+  const total = clamp(items.reduce((a, i) => a + i.pt, 0), 0, 100);
+  return { items: items, total: total, title: scoreTitle(total) };
+}
+function scoreTitle(t) {
+  if (t >= 90) return 'リテールメディア・マスター';
+  if (t >= 75) return '顧客分析ストラテジスト';
+  if (t >= 60) return 'メディアプランナー';
+  if (t >= 40) return 'データ分析ビギナー';
+  return 'もう一度チャレンジ';
+}
+/*SIM-END*/
+
+/* =====================================================================
+   4. フォーマット関数
+   ===================================================================== */
+const fmt = {
+  num: (n) => Math.round(safe(n)).toLocaleString('ja-JP'),
+  people: (n) => fmt.num(n) + '人',
+  pct: (r, d) => (safe(r) * 100).toFixed(d === undefined ? 1 : d) + '%',
+  man: (v) => fmt.num(v) + '万円',
+  yen: (n) => '¥' + fmt.num(n),
+  yenLarge: (n) => { n = safe(n); if (n >= 1e8) return (n / 1e8).toFixed(2) + '億円'; if (n >= 1e4) return fmt.num(n / 1e4) + '万円'; return fmt.num(n) + '円'; },
+  ratio: (n) => safe(n).toFixed(2),
+  deltaRate: (a, b) => { if (safe(a) === 0) return { t: '—', c: 'flat' }; const d = (safe(b) - safe(a)) / safe(a) * 100; return { t: (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + '%', c: Math.abs(d) < 0.5 ? 'flat' : (d > 0 ? 'up' : 'down') }; },
+  deltaPt: (a, b) => { const d = (safe(b) - safe(a)) * 100; return { t: (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + 'pt', c: Math.abs(d) < 0.1 ? 'flat' : (d > 0 ? 'up' : 'down') }; }
+};
+function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
+
+/* =====================================================================
+   5. ゲーム状態（1つのstateオブジェクトで管理）
+   ===================================================================== */
+const ROUND_INFO = {
+  1: { title: '広告を届ける', goal: 'TVCM・DOOH・店内サイネージに予算を配分し、広告接触から来店・購買までのファネルを確認します。' },
+  2: { title: '購入者を知る', goal: 'ROUND 1の購入者分析をもとに、ターゲットとメッセージを選び直します。新規・リピート・スイッチ候補の変化を確かめましょう。' },
+  3: { title: '勝ちパターンを磨く', goal: 'これまでの分析結果を踏まえて戦略を改善し、ROUND 1からの成果の変化を確認します。' }
+};
+const STEPS = ['予算配分', 'メッセージ', 'ターゲット', '配信', '来店・購買結果', '購買者分析', '次回施策'];
+
+function newSeed() { return ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0) || 1; }
+function defaultPlan() { return { tv: 400, dooh: 300, sig: 300, msg: null, target: null }; }
+function createState() {
+  return {
+    seed: newSeed(),
+    screen: 'intro',
+    viewRound: 1,
+    round: 1,
+    tutorial: 0,
+    plans: { 1: defaultPlan(), 2: null, 3: null },
+    results: { 1: null, 2: null, 3: null },
+    animated: { 1: false, 2: false, 3: false },
+    analyzed: { 1: false, 2: false, 3: false },
+    revealed: { 1: 0, 2: 0, 3: 0 },
+    score: null,
+    busy: false
+  };
+}
+let state = createState();
+const timers = new Set();
+function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; }
+function clearTimers() { timers.forEach(id => clearTimeout(id)); timers.clear(); if (anim.raf) cancelAnimationFrame(anim.raf); anim.raf = 0; }
+const anim = { raf: 0 };
+const reduceMotion = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+
+/* =====================================================================
+   6. 状態を変更するアクション
+   ===================================================================== */
+function setBudget(key, value) {
+  const plan = state.plans[state.round];
+  if (!plan) return;
+  const T = CONFIG.BUDGET_TOTAL, step = CONFIG.BUDGET_STEP;
+  const v = Math.round(clamp(value, 0, T) / step) * step;
+  const others = ['tv', 'dooh', 'sig'].filter(k => k !== key);
+  const remain = T - v;
+  const a = plan[others[0]], b = plan[others[1]];
+  let na, nb;
+  if (a + b <= 0) { na = Math.round(remain / 2 / step) * step; nb = remain - na; }
+  else { na = Math.round(remain * a / (a + b) / step) * step; na = clamp(na, 0, remain); nb = remain - na; }
+  plan[key] = v; plan[others[0]] = na; plan[others[1]] = nb;
+}
+function deliver() {
+  if (state.busy) return;
+  const r = state.round;
+  const plan = state.plans[r];
+  if (!plan || !plan.msg || !plan.target) return;
+  if (plan.tv + plan.dooh + plan.sig !== CONFIG.BUDGET_TOTAL) return;
+  if (state.results[r]) { go('run', r); return; }  // 二重計算しない
+  state.busy = true;
+  state.results[r] = simulate(plan, state.seed, r);
+  go('run', r);
+}
+function nextRound() {
+  if (state.round >= 3) return;
+  const prev = state.plans[state.round];
+  state.round += 1;
+  if (!state.plans[state.round]) state.plans[state.round] = { tv: prev.tv, dooh: prev.dooh, sig: prev.sig, msg: null, target: null };
+  go('plan', state.round);
+}
+function restart() {
+  clearTimers();
+  state = createState();
+  state.tutorial = 0;
+  go('intro', 1);
+}
+
+/* =====================================================================
+   7. リテール博士のコメント・ヒント生成
+   ===================================================================== */
+function bestPattern(res) {
+  const cand = res.patterns.filter(p => p.key !== 'none' && p.key !== 'sig' && p.visitors >= 40);
+  if (!cand.length) return null;
+  return cand.slice().sort((a, b) => b.buyRate - a.buyRate)[0];
+}
+function topSegment(res) { return res.segments.slice().sort((a, b) => b.buyers - a.buyers)[0]; }
+function msgName(id) { const m = MESSAGES.find(x => x.id === id); return m ? m.name : '—'; }
+function targetName(id) { const t = TARGETS.find(x => x.id === id); return t ? t.name : '—'; }
+
+function doctorComments(res, phase) {
+  const out = [];
+  const plan = res.plan;
+  const bp = bestPattern(res);
+  if (phase === 'result') {
+    if (res.round === 1) out.push({ t: '売れた個数だけでは、広告の勝ちパターンは分かりません。' });
+    out.push({ t: '広告に接触した ' + fmt.people(res.contacts) + ' のうち ' + fmt.people(res.visitors) + ' が来店し、' + fmt.people(res.buyersLinked) + ' の購入を確認できました。' });
+    if (bp) out.push({ t: bp.label + 'の人は、来店後の購入率が ' + fmt.pct(bp.buyRate) + ' と最も高くなりました。', c: 'gold' });
+    if (plan.sig < 150) out.push({ t: '店内サイネージの予算が少なく、来店後の「ひと押し」が不足しています。', c: 'warn' });
+    if (plan.tv >= 650) out.push({ t: 'TVCM中心の配分で接触人数は多いものの、来店への転換は伸びにくい構成です。', c: 'warn' });
+    if (res.bonuses.length) out.push({ t: 'メッセージとターゲットの相性が結果を押し上げています。' });
+  } else {
+    const shares = [['新規購入', res.newRate], ['リピート購入', res.repShare], ['ブランドスイッチ候補', res.swRate]].sort((a, b) => b[1] - a[1]);
+    out.push({ t: '今回の購入者は、' + shares[0][0] + 'の比率が最も高いようです（' + fmt.pct(shares[0][1]) + '）。' });
+    const dsig = res.patterns.find(p => p.key === 'doohsig');
+    const dOnly = res.patterns.find(p => p.key === 'dooh');
+    if (dsig && dOnly && dsig.visitors > 30 && dOnly.visitors > 30 && dsig.buyRate > dOnly.buyRate * 1.5) {
+      out.push({ t: 'DOOHと店内サイネージの両方に接触した人は、来店後の購入率が高くなりました（' + fmt.pct(dsig.buyRate) + ' vs DOOHのみ ' + fmt.pct(dOnly.buyRate) + '）。', c: 'gold' });
+    } else if (bp) {
+      out.push({ t: bp.label + 'の組み合わせが、来店後の購入に最も効いています。', c: 'gold' });
+    }
+    if (plan.msg === 'func' && res.swRate >= 0.25) out.push({ t: '競合ブランド購入者への機能訴求が、ブランドスイッチ候補の増加につながっています。' });
+    if (plan.msg === 'cont' && plan.target !== 'repeat') out.push({ t: '継続利用訴求は既存購入者に響くメッセージです。今回のターゲットには既存購入者が少なく、力を発揮しきれていません。', c: 'warn' });
+    if (plan.target === 'repeat' && res.newRate < 0.15) out.push({ t: 'リピート候補に絞ったため再購入は強い一方、新規購入者の獲得は限られました。', c: 'warn' });
+    if (plan.msg === 'trial') out.push({ t: 'トライアル訴求で新規購入は増えやすい一方、新規購入者の再購入率はやや低めです。継続につなげる次の一手が必要です。' });
+    out.push({ t: '90日以内の想定再購入率は ' + fmt.pct(res.repurchaseRate) + '。1人あたりの想定LTVは ' + fmt.yen(res.ltvPerBuyer) + ' です。', c: 'gold' });
+    if (res.round < 3) out.push({ t: '次は、新規購入者の90日以内の再購入率を確認しましょう。' });
+  }
+  return out;
+}
+
+function nextHints(res) {
+  const h = [];
+  const plan = res.plan;
+  const a = res.attrs;
+  const top = topSegment(res);
+  h.push({ t: '購入者の中心は「' + top.name + '」', d: '購入者の ' + fmt.pct(div(top.buyers, res.buyers)) + ' を占めました。この層に合うメッセージとターゲットを考えましょう。' });
+  if (a.hair >= 0.6 && !(plan.target === 'haircare' && plan.msg === 'func')) h.push({ t: 'ヘアケア関心層が ' + fmt.pct(a.hair, 0), d: '購入者の多くはヘアケアへの関心が高い層です。商品の違いを伝えるメッセージと相性がよいかもしれません。' });
+  if (a.station >= 0.45 && plan.dooh < 400) h.push({ t: '平日夕方の駅前利用が ' + fmt.pct(a.station, 0), d: '駅前の生活動線で接触できるDOOHを厚くし、時間帯を絞る余地があります。' });
+  const dsig = res.patterns.find(p => p.key === 'doohsig');
+  if (dsig && dsig.buyRate > 0.15) h.push({ t: 'DOOH＋店内サイネージの購入率が ' + fmt.pct(dsig.buyRate), d: '店外で接触した人に棚前で再認知させると購入につながりやすい傾向です。2媒体の重複を意識した配分を。' });
+  if (res.swRate >= 0.25 && plan.msg !== 'func') h.push({ t: 'スイッチ候補が ' + fmt.pct(res.swRate, 0), d: '競合ブランドから移ってきた購入者がいます。機能の違いを具体的に伝えると、さらに増やせる可能性があります。' });
+  if (res.newRate >= 0.4 && plan.msg !== 'trial') h.push({ t: '新規購入が ' + fmt.pct(res.newRate, 0), d: '新規購入者が多い層です。初回購入のきっかけをつくる訴求と組み合わせる手があります。' });
+  if (res.repShare >= 0.4 && plan.msg !== 'cont') h.push({ t: 'リピート購入が ' + fmt.pct(res.repShare, 0), d: '既存購入者には、使い続ける理由を伝えると再購入率とLTVが伸びやすくなります。' });
+  if (plan.sig < 200) h.push({ t: '店内サイネージを見直す', d: '来店者のうちサイネージに接触したのは ' + fmt.pct(res.sigRate, 0) + '。棚前での再認知が不足しています。' });
+  if (plan.tv >= 600) h.push({ t: 'TVCMの比重が高い', d: '接触人数は多いものの、ターゲット精度は低めです。来店・購買までのつながりで配分を考えましょう。' });
+  return h.slice(0, 5);
+}
+
+function finalReview(r1, r3, score) {
+  const lines = [];
+  const dB = div(r3.buyers - r1.buyers, r1.buyers);
+  const dL = div(r3.ltvTotal - r1.ltvTotal, r1.ltvTotal);
+  if (r3.buyers >= r1.buyers) lines.push('購入者数はROUND 1から ' + fmt.deltaRate(r1.buyers, r3.buyers).t + ' 変化しました。');
+  else lines.push('購入者数はROUND 1を下回りました（' + fmt.deltaRate(r1.buyers, r3.buyers).t + '）。分析結果と戦略の組み合わせを見直す余地があります。');
+  if (r3.ltvTotal >= r1.ltvTotal) lines.push('想定LTVの合計は ' + fmt.deltaRate(r1.ltvTotal, r3.ltvTotal).t + '。「誰が買ったか」を踏まえた改善が、売上の先の価値につながりました。');
+  else lines.push('想定LTVの合計は ' + fmt.deltaRate(r1.ltvTotal, r3.ltvTotal).t + '。再購入につながる層への訴求が弱かった可能性があります。');
+  if (dB > 0.15 && dL > 0.15) lines.push('来店・購買・再購入のすべてで手応えのある改善です。データをつないで勝ちパターンを磨けています。');
+  if (score.total < 60) lines.push('購入者分析で見えた傾向と、選んだターゲット・メッセージが噛み合っていなかったようです。');
+  return lines;
+}
+function nextActions(score, r3) {
+  const weak = score.items.slice().sort((a, b) => a.ratio - b.ratio).slice(0, 3);
+  const map = {
+    visit: 'DOOHを生活動線と時間帯で絞り込み、TVCM＋DOOHの重複接触で来店を増やす',
+    buy: '店内サイネージを強化し、DOOH＋店内サイネージの重複接触で来店後の購入率を高める',
+    new: 'ブランド新規購入候補や20〜30代女性に、トライアル訴求で初回購入のきっかけをつくる',
+    sw: '競合ブランド購入者を含むヘアケア関心層に、機能訴求で違いを伝える',
+    rep: '過去購入者・リピート候補に継続利用訴求を届け、90日以内の再購入を促す',
+    roas: '購入率の高い接触経路に予算を寄せ、1購入あたりの広告費を下げる'
+  };
+  const acts = weak.map(w => map[w.key]);
+  acts.push('新規購入者の90日後の再購入状況を計測し、次回の配信ターゲットに反映する');
+  return acts;
+}
+
+/* =====================================================================
+   8. 画面描画（UI）
+   ===================================================================== */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+const stage = $('#stage');
+
+function go(screen, viewRound) {
+  clearTimers();
+  const doRender = () => {
+    state.screen = screen;
+    if (viewRound) state.viewRound = viewRound;
+    render();
+  };
+  if (reduceMotion || !stage.innerHTML) { doRender(); return; }
+  stage.classList.add('is-leaving');
+  setTimeout(() => {
+    stage.classList.remove('is-leaving');
+    stage.classList.add('is-entering');
+    doRender();
+    // 次フレームでフェードイン
+    requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove('is-entering')));
+  }, 220);
+}
+
+function render() {
+  renderTopbar();
+  const s = state.screen;
+  const fn = { intro: renderIntro, plan: renderPlan, run: renderRun, analysis: renderAnalysis, next: renderNext, final: renderFinal, ending: renderEnding, report: renderReport }[s] || renderIntro;
+  fn();
+  const h = $('h2', stage);
+  if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
+  try { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+}
+
+function renderTopbar() {
+  const r = state.viewRound;
+  const s = state.screen;
+  const endScreens = ['final', 'ending', 'report'];
+  $('#roundPills').innerHTML = [1, 2, 3].map(i => {
+    let cls = 'round-pill';
+    if (endScreens.includes(s) || state.results[i] && state.analyzed[i] && i < state.round) cls += ' is-done';
+    if (!endScreens.includes(s) && s !== 'intro' && i === r) cls += ' is-current';
+    return '<span class="' + cls + '">ROUND ' + i + '</span>';
+  }).join('') + (endScreens.includes(s) ? '<span class="round-pill is-current">RESULT</span>' : '');
+  let cur = -1, done = -1;
+  const plan = state.plans[r];
+  if (s === 'plan') { done = plan && plan.msg ? (plan.target ? 2 : 1) : 0; cur = plan && plan.msg ? (plan.target ? 3 : 2) : 1; }
+  if (s === 'run') { done = 3; cur = 4; }
+  if (s === 'analysis') { done = 4; cur = 5; }
+  if (s === 'next') { done = 5; cur = 6; }
+  if (endScreens.includes(s)) { done = 6; cur = -1; }
+  if (s === 'intro') { done = -1; cur = -1; }
+  $('#progress').innerHTML = STEPS.map((t, i) => {
+    const cls = i <= done ? 'is-done' : (i === cur ? 'is-current' : '');
+    return '<li class="' + cls + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="n">' + (i + 1) + '</span><span class="t">' + t + '</span></li>';
+  }).join('');
+}
+
+function doctorSvg() {
+  return '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#132a4f"/>' +
+    '<path d="M14 64c2-12 9-18 18-18s16 6 18 18z" fill="#fffdf9"/><path d="M27 46l5 8 5-8" fill="#2bb39b"/>' +
+    '<circle cx="32" cy="29" r="12" fill="#f3d9c4"/><path d="M20 27c0-9 6-13 12-13s12 4 12 13c-3-4-7-6-12-6s-9 2-12 6z" fill="#e8e3da"/>' +
+    '<circle cx="27" cy="30" r="4" fill="none" stroke="#2bb39b" stroke-width="2"/><circle cx="37" cy="30" r="4" fill="none" stroke="#2bb39b" stroke-width="2"/>' +
+    '<path d="M31 30h2" stroke="#2bb39b" stroke-width="2"/><path d="M29 36c2 1.5 4 1.5 6 0" stroke="#132a4f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+}
+function doctorBlock(comments, extra) {
+  return '<div class="doctor" role="note" aria-label="リテール博士の分析コメント">' + doctorSvg() +
+    '<div><div class="who">リテール博士 <span>AI ANALYST</span></div><ul>' +
+    comments.map((c, i) => '<li class="' + (c.c || '') + '" style="animation-delay:' + (i * 0.25) + 's">' + esc(c.t) + '</li>').join('') +
+    '</ul>' + (extra || '') + '</div></div>';
+}
+function screenHead(eyebrow, title, lead, right) {
+  return '<div class="screen-head"><div class="titles"><p class="eyebrow">' + eyebrow + '</p><h2>' + title + '</h2>' + (lead ? '<p class="lead">' + lead + '</p>' : '') + '</div>' + (right || '') + '</div>';
+}
+
+/* ---------- Intro / Tutorial ---------- */
+const TUTORIAL = [
+  { t: '広告を届ける', d: 'TVCM、DOOH、店内サイネージに予算を配分します。', chips: ['<span class="chip navy">TVCM</span>', '<span class="chip mint">DOOH</span>', '<span class="chip coral">店内サイネージ</span>'] },
+  { t: '来店と購買を確かめる', d: '接触した生活者が、来店し、商品を購入したかを確認します。', chips: ['<span class="chip">広告接触</span>', '<span class="chip">→ 来店</span>', '<span class="chip coral">→ 購入</span>'] },
+  { t: '購入者を深く知る', d: '新規・リピート・スイッチ候補や購入者像を分析し、次の広告に生かします。', chips: ['<span class="chip mint">● 新規</span>', '<span class="chip navy">■ リピート</span>', '<span class="chip coral">◆ スイッチ候補</span>', '<span class="chip gold">LTV</span>'] }
+];
+function renderIntro() {
+  const i = clamp(state.tutorial, 0, 2);
+  const card = TUTORIAL[i];
+  stage.innerHTML =
+    '<section class="screen"><div class="intro">' +
+      '<div class="intro-hero">' +
+        '<div><h1>RETAIL<br>MEDIA<br>QUEST</h1><p class="sub">広告接触を、購買とLTVにつなげよう</p></div>' +
+        '<canvas id="heroCanvas" aria-hidden="true"></canvas>' +
+        '<div style="display:flex;flex-direction:column;gap:10px"><span class="brand-card"><b>MINTÉ</b>架空のヘアケアブランド</span>' +
+        '<p class="role">あなたはMINTÉのマーケティング責任者です。1ラウンド1,000万円の広告予算で、全3ラウンドの戦略改善に挑みます。（所要 5〜8分）</p></div>' +
+      '</div>' +
+      '<div class="panel tut">' +
+        '<div class="dots" aria-hidden="true">' + [0, 1, 2].map(k => '<span class="' + (k <= i ? 'on' : '') + '"></span>').join('') + '</div>' +
+        '<div class="tut-card"><span class="big-n num" aria-hidden="true">0' + (i + 1) + '</span>' +
+          '<p class="eyebrow">TUTORIAL ' + (i + 1) + ' / 3</p><h2>' + card.t + '</h2><p>' + card.d + '</p>' +
+          '<div class="tut-visual">' + card.chips.join('') + '</div></div>' +
+        '<div class="actions between">' +
+          '<button class="btn btn-ghost" data-action="tut-prev"' + (i === 0 ? ' disabled' : '') + '>前へ</button>' +
+          (i < 2 ? '<button class="btn btn-primary" data-action="tut-next">次へ</button>' : '<button class="btn btn-accent btn-lg" data-action="start">ゲームをはじめる</button>') +
+        '</div>' +
+      '</div>' +
+    '</div></section>';
+  heroAnimation();
+}
+function heroAnimation() {
+  const cv = $('#heroCanvas'); if (!cv) return;
+  const ctx = setupCanvas(cv); if (!ctx) return;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const rng = mulberry32(state.seed);
+  const people = Array.from({ length: 34 }, (_, i) => ({ x: rng() * W, y: 20 + rng() * (H - 40), s: 0.25 + rng() * 0.5, c: i % 7 === 0 ? '#ee6a4d' : (i % 5 === 0 ? '#c8952a' : '#2bb39b') }));
+  const draw = (dt) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([3, 5]);
+    [0.2, 0.5, 0.8].forEach(f => { ctx.beginPath(); ctx.moveTo(W * f, 6); ctx.lineTo(W * f, H - 6); ctx.stroke(); });
+    ctx.setLineDash([]);
+    people.forEach(p => { if (!reduceMotion) { p.x += p.s * dt * 0.06; if (p.x > W + 8) p.x = -8; } drawPerson(ctx, p.x, p.y, 1, p.c, 1); });
+  };
+  let last = performance.now();
+  const loop = (now) => {
+    if (!document.body.contains(cv)) return;
+    draw(Math.min(50, now - last)); last = now;
+    if (!reduceMotion) anim.raf = requestAnimationFrame(loop);
+  };
+  anim.raf = requestAnimationFrame(loop);
+}
+
+/* ---------- Plan ---------- */
+function renderPlan() {
+  const r = state.viewRound;
+  const plan = state.plans[r];
+  const info = ROUND_INFO[r];
+  const prev = r > 1 ? state.results[r - 1] : null;
+  const media = [
+    { k: 'tv', name: 'TVCM', ico: 'TV', cls: 'ico-tv', tags: ['広い認知', '接触人数 多', 'ターゲット精度 低め', '来店転換 中'] },
+    { k: 'dooh', name: 'DOOH', ico: 'DO', cls: 'ico-dooh', tags: ['駅前・生活動線', 'エリア・時間帯を指定', '来店と相性◎'] },
+    { k: 'sig', name: '店内サイネージ', ico: 'SG', cls: 'ico-sig', tags: ['商品棚の近く', '接触人数 少', '購入転換 高', '重複接触で効果増'] }
+  ];
+  const prevHint = prev ? (() => {
+    const hs = nextHints(prev).slice(0, 2);
+    return '<div class="prev-hint"><b>前回の分析メモ：</b>' + hs.map(h => esc(h.t)).join(' ／ ') + '</div>';
+  })() : '';
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('ROUND ' + r + ' ・ ' + info.title, '広告プランを組み立てる', info.goal,
+      r > 1 ? '<button class="btn btn-ghost" data-action="view-analysis" data-round="' + (r - 1) + '">ROUND ' + (r - 1) + 'の分析を見返す</button>' : '') +
+    prevHint +
+    '<div class="plan-grid">' +
+      '<div class="panel budget"><h3><span class="stepno">1</span>予算配分<span class="sum-badge num" id="sumBadge">合計 1,000万円 / 1,000万円</span></h3>' +
+        '<p class="small muted">どれか1つを動かすと、残りの媒体が自動で調整され、合計は常に1,000万円になります。</p>' +
+        media.map(m => '<div class="media-row">' +
+          '<label class="media-name" for="sl-' + m.k + '"><span class="media-ico ' + m.cls + '" aria-hidden="true">' + m.ico + '</span>' + m.name + '</label>' +
+          '<div class="media-val num"><span id="val-' + m.k + '">' + fmt.num(plan[m.k]) + '</span><small>万円</small></div>' +
+          '<input type="range" id="sl-' + m.k + '" min="0" max="1000" step="10" value="' + plan[m.k] + '" data-media="' + m.k + '" aria-valuetext="' + plan[m.k] + '万円">' +
+          '<div class="media-tags">' + m.tags.map(t => '<span class="chip">' + t + '</span>').join('') + '</div>' +
+          '<div class="media-reach" id="reach-' + m.k + '"></div>' +
+        '</div>').join('') +
+        '<div class="alloc-bar" aria-hidden="true"><span id="ab-tv" style="background:var(--navy-2)"></span><span id="ab-dooh" style="background:var(--mint-ink)"></span><span id="ab-sig" style="background:var(--coral)"></span></div>' +
+        '<div class="actions" style="margin-top:12px"><button class="btn btn-sm" data-action="equal">均等配分</button><button class="btn btn-sm" data-action="reset-budget">リセット</button></div>' +
+      '</div>' +
+      '<div class="panel"><h3><span class="stepno">2</span>広告メッセージ</h3>' +
+        '<div class="opt-list" role="radiogroup" aria-label="広告メッセージ">' +
+        MESSAGES.map(m => '<label class="opt"><input type="radio" name="msg" id="msg-' + m.id + '" value="' + m.id + '"' + (plan.msg === m.id ? ' checked' : '') + '>' +
+          '<span class="box"><span class="radio-ind" aria-hidden="true"></span><span><span class="t">' + m.name + '</span><span class="copy">' + m.copy + '</span><span class="d">' + m.desc + '</span></span></span></label>').join('') +
+        '</div></div>' +
+      '<div class="panel"><h3><span class="stepno">3</span>配信ターゲット</h3>' +
+        '<div class="opt-list" role="radiogroup" aria-label="配信ターゲット">' +
+        TARGETS.map(t => '<label class="opt"><input type="radio" name="target" id="tg-' + t.id + '" value="' + t.id + '"' + (plan.target === t.id ? ' checked' : '') + '>' +
+          '<span class="box"><span class="radio-ind" aria-hidden="true"></span><span><span class="t">' + t.name + '</span><span class="d">' + t.desc + '</span></span></span></label>').join('') +
+        '</div></div>' +
+    '</div>' +
+    '<div class="panel plan-foot">' +
+      '<div class="summary-line" id="planSummary"></div>' +
+      '<div class="actions end"><button class="btn btn-accent btn-lg" data-action="deliver" id="deliverBtn">広告を配信する</button></div>' +
+    '</div>' +
+    '</section>';
+  updatePlanReadouts();
+}
+function updatePlanReadouts() {
+  const r = state.viewRound;
+  const plan = state.plans[r];
+  if (!plan) return;
+  const total = plan.tv + plan.dooh + plan.sig;
+  ['tv', 'dooh', 'sig'].forEach(k => {
+    const sl = $('#sl-' + k); if (sl && Number(sl.value) !== plan[k]) sl.value = plan[k];
+    if (sl) sl.setAttribute('aria-valuetext', plan[k] + '万円');
+    const v = $('#val-' + k); if (v) v.textContent = fmt.num(plan[k]);
+    const ab = $('#ab-' + k); if (ab) ab.style.width = (plan[k] / CONFIG.BUDGET_TOTAL * 100) + '%';
+    const re = $('#reach-' + k);
+    if (re) {
+      const n = plan[k] / 100 * CONFIG.REACH_PER_MILLION[k];
+      re.textContent = (k === 'sig' ? '想定店内リーチ（延べ）' : '推定接触者数（延べ）') + '：約 ' + fmt.people(n) + '（100万円あたり ' + fmt.num(CONFIG.REACH_PER_MILLION[k]) + '人）';
+    }
+  });
+  const badge = $('#sumBadge'); if (badge) badge.textContent = '合計 ' + fmt.man(total) + ' / ' + fmt.man(CONFIG.BUDGET_TOTAL);
+  const sum = $('#planSummary');
+  if (sum) {
+    sum.innerHTML = '<span class="chip navy">TVCM ' + fmt.man(plan.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(plan.dooh) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(plan.sig) + '</span>' +
+      '<span class="chip">メッセージ：' + (plan.msg ? msgName(plan.msg) : '未選択') + '</span><span class="chip">ターゲット：' + (plan.target ? targetName(plan.target) : '未選択') + '</span>';
+  }
+  const btn = $('#deliverBtn');
+  if (btn) {
+    const ok = plan.msg && plan.target && total === CONFIG.BUDGET_TOTAL && !state.results[r];
+    btn.disabled = !ok;
+    btn.title = ok ? '' : 'メッセージとターゲットを選ぶと配信できます';
+  }
+}
+
+/* ---------- Run (funnel animation + results) ---------- */
+const STAGE_DEFS = [
+  { k: 'CONTACT', t: '広告接触' }, { k: 'VISIT', t: 'ドラッグストア来店' }, { k: 'SIGNAGE', t: '店内サイネージ接触' },
+  { k: 'PURCHASE', t: '商品購入' }, { k: 'ANALYSIS', t: '購買者分析' }, { k: 'REPEAT', t: '再購入（90日）' }
+];
+function stageValues(res) { return [res.contacts, res.visitors, res.sigContacts, res.buyersLinked, res.buyers, res.repurchasers]; }
+function renderRun() {
+  const r = state.viewRound;
+  const res = state.results[r];
+  if (!res) { go('plan', r); return; }
+  const locked = r === 1 && !state.analyzed[1];
+  const vals = stageValues(res);
+  const rateText = [
+    'ユニーク推定',
+    '来店率 ' + fmt.pct(res.visitRate, 2),
+    '来店者の ' + fmt.pct(res.sigRate, 0),
+    '購入率 ' + fmt.pct(res.buyRate),
+    '確認できた購入者 全体',
+    '再購入率 ' + fmt.pct(res.repurchaseRate)
+  ];
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('ROUND ' + r + ' ・ ' + ROUND_INFO[r].title, '生活者の動きを追跡する',
+      'TVCM ' + fmt.man(res.plan.tv) + ' ／ DOOH ' + fmt.man(res.plan.dooh) + ' ／ 店内サイネージ ' + fmt.man(res.plan.sig) + '　・　' + msgName(res.plan.msg) + ' × ' + targetName(res.plan.target),
+      '<button class="btn btn-sm no-print" data-action="skip-anim" id="skipBtn">アニメーションをスキップ</button>') +
+    '<div class="panel funnel-panel">' +
+      '<div class="stage-labels">' + STAGE_DEFS.map(s => '<div><span class="k">' + s.k + '</span>' + s.t + '</div>').join('') + '</div>' +
+      '<canvas class="funnel-canvas" id="funnelCanvas" role="img" aria-label="広告接触から再購入までの生活者の流れ"></canvas>' +
+      '<div class="stage-counters">' + STAGE_DEFS.map((s, i) => {
+        const lk = locked && i >= 4;
+        const cls = 'cnt' + (i === 3 ? ' buy' : '') + (i === 5 ? ' ltv' : '') + (lk ? ' locked' : '');
+        return '<div class="' + cls + '"><span class="v num" data-stage="' + i + '">' + (lk ? '？' : '0') + '</span><span class="r">' + (lk ? '分析で解明' : rateText[i]) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="legend"><span class="lg"><i style="background:#2a4878"></i>生活者</span><span class="lg"><i style="background:#ee6a4d"></i>購入者</span>' +
+        (locked ? '' : '<span class="lg"><i style="background:#2bb39b"></i>● 新規</span><span class="lg"><i style="background:#132a4f"></i>■ リピート</span><span class="lg"><i style="background:#b8432a"></i>◆ スイッチ候補</span><span class="lg"><i style="background:#c8952a"></i>再購入</span>') +
+        '<span>※アイコン数は人数の規模感を示すイメージです</span></div>' +
+    '</div>' +
+    '<div id="runResults" hidden></div>' +
+    '</section>';
+  const done = () => { state.busy = false; state.animated[r] = true; const sb = $('#skipBtn'); if (sb) sb.hidden = true; showRunResults(res, locked); };
+  runFunnel(res, locked, vals, state.animated[r] || reduceMotion, done);
+}
+function showRunResults(res, locked) {
+  const box = $('#runResults'); if (!box || !box.hidden) return;
+  const r = res.round;
+  const kpi = (cls, l, v, s) => '<div class="kpi ' + cls + '"><span class="l">' + l + '</span><span class="v num">' + v + '</span><span class="s">' + s + '</span></div>';
+  let qa = '';
+  if (r === 1) {
+    qa = '<div class="question"><div><span class="q-k">QUESTION</span><p>商品は売れました。しかし、誰が買ったのでしょうか？</p><span class="unlock">🔓 購買者分析がアンロックされました</span></div>' +
+      '<button class="btn btn-mint btn-lg" data-action="analyze">購入者を詳しく分析する</button></div>';
+  } else {
+    qa = '<div class="actions end"><button class="btn btn-accent btn-lg" data-action="analyze">購入者を詳しく分析する</button></div>';
+  }
+  box.innerHTML =
+    '<div class="screen" style="gap:14px">' +
+    '<div class="kpis">' +
+      kpi('', '広告接触者数', '<span data-count="' + res.contacts + '">0</span><small>人</small>', 'TVCM・DOOH・店内サイネージ') +
+      kpi('mint', '来店者数', '<span data-count="' + res.visitors + '">0</span><small>人</small>', '来店率 ' + fmt.pct(res.visitRate, 2)) +
+      kpi('', '店内サイネージ接触者数', '<span data-count="' + res.sigContacts + '">0</span><small>人</small>', '来店者の ' + fmt.pct(res.sigRate, 0) + ' が接触') +
+      kpi('coral', '購入者数', '<span data-count="' + res.buyers + '">0</span><small>人</small>', 'うち広告接触あり ' + fmt.people(res.buyersLinked)) +
+      kpi('', '1購入あたり広告費', '<span data-count="' + res.cpa + '" data-fmt="yen">¥0</span>', '広告接触ありの購入者で算出') +
+    '</div>' +
+    doctorBlock(doctorComments(res, 'result'), res.bonuses.length ? '<div class="bonus-list">' + res.bonuses.map(b => '<span class="chip gold">◎ ' + esc(b) + '</span>').join('') + '</div>' : '') +
+    qa + '</div>';
+  box.hidden = false;
+  countUpAll(box);
+}
+
+/* 人物アイコンの描画 */
+function drawPerson(ctx, x, y, scale, color, alpha, shape) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  const s = scale;
+  ctx.beginPath(); ctx.arc(x, y - 4.2 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - 3 * s, y - 1.2 * s, 6 * s, 6.4 * s, [3 * s, 3 * s, 1 * s, 1 * s]);
+  else ctx.rect(x - 3 * s, y - 1.2 * s, 6 * s, 6.4 * s);
+  ctx.fill();
+  if (shape === 'rep') { ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1.2 * s, y + 0.6 * s, 2.4 * s, 2.4 * s); }
+  if (shape === 'sw') { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x, y + 0.2 * s); ctx.lineTo(x + 1.6 * s, y + 1.8 * s); ctx.lineTo(x, y + 3.4 * s); ctx.lineTo(x - 1.6 * s, y + 1.8 * s); ctx.fill(); }
+  if (shape === 'gold') { ctx.strokeStyle = '#8a620c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y - 4.2 * s, 3.6 * s, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+}
+function setupCanvas(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(1, cv.clientWidth), h = Math.max(1, cv.clientHeight);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d'); if (!ctx) return null;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+function runFunnel(res, locked, vals, instant, onDone) {
+  const cv = $('#funnelCanvas'); if (!cv) { onDone(); return; }
+  const ctx = setupCanvas(cv); if (!ctx) { onDone(); return; }
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const maxStage = locked ? 3 : 5;
+  const N0 = W < 600 ? 70 : 120;
+  const base = Math.max(1, vals[0]);
+  const n = vals.map((v, i) => i === 0 ? N0 : Math.max(3, Math.round(N0 * Math.pow(div(v, base), 0.3))));
+  for (let i = 1; i < 6; i++) n[i] = Math.min(n[i], n[i - 1]);
+  const xs = [0, 1, 2, 3, 4, 5].map(i => W * (i + 0.5) / 6);
+  const hh = [0, 1, 2, 3, 4, 5].map(i => H * 0.42 * (1 - i * 0.12));
+  const rng = mulberry32((state.seed + res.round * 977) >>> 0);
+  const shares = [res.newB, res.repB, res.swB].map(v => div(v, res.buyers));
+  const dots = [];
+  for (let i = 0; i < N0; i++) {
+    let fin = 0; for (let k = 5; k >= 0; k--) { if (i < n[k]) { fin = k; break; } }
+    fin = Math.min(fin, maxStage);
+    const u = rng() * 2 - 1;
+    const tr = rng();
+    const type = tr < shares[0] ? 'new' : (tr < shares[0] + shares[1] ? 'rep' : 'sw');
+    dots.push({ fin: fin, u: u, delay: rng() * 1.5, type: type, j: rng() * Math.PI * 2 });
+  }
+  const SP = 0.6; // 1ステージあたりの秒数
+  const total = 1.5 + (maxStage + 0.7) * SP + 1.0;
+  const counters = $$('.stage-counters .v');
+  const started = new Set();
+  const startCounter = (k) => {
+    if (started.has(k)) return; started.add(k);
+    if (locked && k >= 4) return;
+    const el = counters[k]; if (!el) return;
+    countUp(el, vals[k], fmt.num, instant ? 0 : 900);
+  };
+  const colorFor = (d, pos) => {
+    if (pos >= 4.5 && d.fin >= 5) return ['#c8952a', 'gold'];
+    if (pos >= 3.6 && !locked) return d.type === 'new' ? ['#2bb39b', 'new'] : (d.type === 'rep' ? ['#132a4f', 'rep'] : ['#b8432a', 'sw']);
+    if (pos >= 2.6 && d.fin >= 3) return ['#ee6a4d', null];
+    return ['#2a4878', null];
+  };
+  const drawBg = () => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(19,42,79,0.045)';
+    ctx.beginPath(); ctx.moveTo(0, H / 2 - hh[0]);
+    xs.forEach((x, i) => ctx.lineTo(x, H / 2 - hh[i]));
+    ctx.lineTo(W, H / 2 - hh[5]); ctx.lineTo(W, H / 2 + hh[5]);
+    for (let i = 5; i >= 0; i--) ctx.lineTo(xs[i], H / 2 + hh[i]);
+    ctx.lineTo(0, H / 2 + hh[0]); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(19,42,79,0.16)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+    xs.forEach(x => { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, H - 4); ctx.stroke(); });
+    ctx.setLineDash([]);
+    if (locked) {
+      ctx.fillStyle = 'rgba(19,42,79,0.06)'; ctx.fillRect(xs[4] - W / 12, 0, W / 6 * 2, H);
+      ctx.fillStyle = '#5a6378'; ctx.font = '700 13px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center';
+      ctx.fillText('購入者の中身は、まだ見えていません', (xs[4] + xs[5]) / 2, H / 2 - 6);
+      ctx.font = '12px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillText('「購入者を詳しく分析する」でアンロック', (xs[4] + xs[5]) / 2, H / 2 + 14);
+    }
+  };
+  const lerpArr = (arr, pos) => { const p = clamp(pos, 0, 5); const i = Math.floor(p); const f = p - i; return i >= 5 ? arr[5] : arr[i] + (arr[i + 1] - arr[i]) * f; };
+  const frame = (t) => {
+    drawBg();
+    const sc = W < 600 ? 1.0 : 1.25;
+    dots.forEach(d => {
+      const local = t - d.delay;
+      if (local < 0) return;
+      let pos = -0.5 + local / SP;
+      let drop = 0;
+      if (pos >= d.fin) {
+        const over = (pos - d.fin) * SP;
+        pos = d.fin;
+        if (d.fin < maxStage) drop = over;
+      }
+      if (pos >= 0) for (let k = 0; k <= Math.floor(pos); k++) startCounter(k);
+      let x = pos < 0 ? xs[0] + pos * (W / 6) : lerpArr(xs, pos);
+      const half = pos < 0 ? hh[0] : lerpArr(hh, pos);
+      let y = H / 2 + d.u * (half - 8) + Math.sin(local * 3 + d.j) * 1.2;
+      let a = 1;
+      // 到達したステージで止まった人は、少し横に散らばって待機
+      const rest = clamp((local / SP - 0.5 - d.fin) * 2, 0, 1);
+      if (pos >= d.fin) x += Math.cos(d.j) * (W / 22) * rest * (d.fin < maxStage ? 0.6 : 1);
+      // 離脱した人は下に沈み、薄く残ってファネルの形を示す
+      if (drop > 0) { y += Math.min(drop, 0.45) * 50; a = clamp(1 - drop / 0.6, 0.16, 1); }
+      const col = colorFor(d, pos);
+      drawPerson(ctx, x, y, sc, col[0], a * (drop > 0 ? 0.6 : 0.92), col[1]);
+    });
+  };
+  if (instant) {
+    frame(total + 5);
+    for (let k = 0; k < 6; k++) startCounter(k);
+    onDone();
+    return;
+  }
+  const t0 = performance.now();
+  let finished = false;
+  const finish = () => { if (finished) return; finished = true; frame(total + 5); for (let k = 0; k < 6; k++) startCounter(k); onDone(); };
+  anim.finish = finish;
+  const loop = (now) => {
+    if (!document.body.contains(cv)) { finished = true; state.busy = false; return; }
+    const t = (now - t0) / 1000;
+    frame(t);
+    if (t < total) anim.raf = requestAnimationFrame(loop); else finish();
+  };
+  anim.raf = requestAnimationFrame(loop);
+}
+
+/* カウントアップ */
+function countUp(el, to, formatter, dur) {
+  to = safe(to);
+  const f = formatter || fmt.num;
+  if (!dur || reduceMotion) { el.textContent = f(to); return; }
+  const t0 = performance.now();
+  const step = (now) => {
+    if (!document.body.contains(el)) return;
+    const p = clamp((now - t0) / dur, 0, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = f(to * e);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function countUpAll(root) {
+  $$('[data-count]', root).forEach(el => {
+    const kind = el.getAttribute('data-fmt');
+    const f = kind === 'yen' ? fmt.yen : (kind === 'pct' ? (v) => fmt.pct(v) : (kind === 'yenL' ? fmt.yenLarge : fmt.num));
+    countUp(el, Number(el.getAttribute('data-count')), f, 1000);
+  });
+}
+
+/* ---------- Analysis ---------- */
+const AN_ITEMS = [
+  { k: 'type', t: '新規・リピート・スイッチ候補の構成比', half: true },
+  { k: 'gender', t: '性別構成' },
+  { k: 'age', t: '年代構成' },
+  { k: 'behavior', t: '行動属性' },
+  { k: 'interest', t: '興味関心' },
+  { k: 'path', t: '広告接触経路', wide: true },
+  { k: 'repurchase', t: '90日以内の想定再購入率' },
+  { k: 'ltv', t: '想定LTV' }
+];
+const TYPE_COLORS = { new: '#2bb39b', rep: '#132a4f', sw: '#b8432a' };
+function renderAnalysis() {
+  const r = state.viewRound;
+  const res = state.results[r];
+  if (!res) { go('plan', r); return; }
+  state.analyzed[r] = true;
+  const isPast = r < state.round;
+  const already = state.revealed[r] >= AN_ITEMS.length;
+  const nextLabel = r < 3 ? '次回施策へのヒントを見る' : '最終結果を見る';
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('ROUND ' + r + ' ・ 購買者分析', '購入者を詳しく分析する',
+      '購入者 ' + fmt.people(res.buyers) + ' を、会員ID付き購買データと接触データで分析しています。',
+      '<div class="actions no-print"><button class="btn btn-sm" data-action="reveal-all" id="revealAll"' + (already ? ' hidden' : '') + '>すべて表示</button></div>') +
+    '<div class="an-grid" id="anGrid">' +
+      AN_ITEMS.map((it, i) => '<article class="panel an-card' + (it.wide ? ' wide' : '') + (it.half ? ' half' : '') + '" data-an="' + i + '" aria-label="' + it.t + '">' +
+        '<h3><span class="idx num">' + (i + 1) + ' / 8</span>' + it.t + '</h3>' +
+        '<div class="lockbox">分析待ち</div><div class="content">' + analysisContent(it.k, res) + '</div></article>').join('') +
+    '</div>' +
+    '<div id="anDoctor"></div>' +
+    '<div class="disclaimer"><span>本ゲームの数値・分析結果は、リテールメディアの仕組みを理解するためのシミュレーションです。</span><span>広告接触は、放映ログ、視聴データ、位置情報、店内滞在情報などから推定します。購買は、連携可能な会員ID付き購買データなどによって確認します。</span><span>属性・行動・興味関心の分析は、本人同意のもとで連携可能なデータの範囲で行う想定です。ブランドスイッチは、同一カテゴリーの過去購買履歴に基づく候補判定です。</span><span>本ゲームでは「新規購入」「リピート購入」「ブランドスイッチ候補」を重複しない3分類として集計しています（スイッチ候補はMINTÉの購入履歴がない人のうち、前回競合ブランドを購入した人）。</span></div>' +
+    '<div class="actions between no-print">' +
+      '<button class="btn btn-ghost" data-action="view-run" data-round="' + r + '">配信結果に戻る</button>' +
+      '<div class="actions">' + (isPast ? '<button class="btn btn-primary" data-action="back-plan">ROUND ' + state.round + 'に戻る</button>' :
+        '<button class="btn btn-accent" data-action="to-next" id="toNext"' + (already ? '' : ' disabled') + '>' + nextLabel + '</button>') + '</div>' +
+    '</div>' +
+    '</section>';
+  revealSequence(res, r, already);
+}
+function revealSequence(res, r, instant) {
+  const cards = $$('.an-card', stage);
+  const showDoctor = () => {
+    const d = $('#anDoctor'); if (d && !d.innerHTML) d.innerHTML = doctorBlock(doctorComments(res, 'analysis'));
+    const btn = $('#toNext'); if (btn) btn.disabled = false;
+    const ra = $('#revealAll'); if (ra) ra.hidden = true;
+  };
+  const revealOne = (i) => {
+    const c = cards[i]; if (!c || c.classList.contains('is-revealed')) return;
+    c.classList.remove('is-analyzing');
+    c.classList.add('is-revealed');
+    state.revealed[r] = Math.max(state.revealed[r], i + 1);
+    postReveal(c, AN_ITEMS[i].k, res, instant);
+    if (cards[i + 1] && !instant) cards[i + 1].classList.add('is-analyzing');
+  };
+  anim.revealAll = () => { clearTimers(); cards.forEach((c, i) => revealOne(i)); showDoctor(); };
+  if (instant || reduceMotion) { anim.revealAll(); return; }
+  cards[0].classList.add('is-analyzing');
+  cards.forEach((c, i) => later(() => { revealOne(i); if (i === cards.length - 1) later(showDoctor, 400); }, 500 + i * 750));
+}
+function postReveal(card, k, res, instant) {
+  const content = $('.content', card);
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (content) content.classList.add('go'); }));
+  countUpAll(card);
+  if (k === 'type') {
+    const cv = $('canvas', card);
+    if (cv) drawDonutAnimated(cv, [{ v: res.newB, c: TYPE_COLORS.new }, { v: res.repB, c: TYPE_COLORS.rep }, { v: res.swB, c: TYPE_COLORS.sw }], instant || reduceMotion);
+  }
+}
+function hbar(label, ratio, color, valText) {
+  const w = (clamp(ratio, 0, 1) * 100).toFixed(1) + '%';
+  return '<div class="hbar"><span>' + label + '</span><span class="track"><span class="fill" style="--w:' + w + ';background:' + (color || 'var(--navy-2)') + '"></span></span><span class="val">' + (valText || fmt.pct(ratio, 0)) + '</span></div>';
+}
+function analysisContent(k, res) {
+  const a = res.attrs;
+  if (k === 'type') {
+    const items = [['● 新規購入', res.newB, TYPE_COLORS.new, '●'], ['■ リピート購入', res.repB, TYPE_COLORS.rep, '■'], ['◆ ブランドスイッチ候補', res.swB, TYPE_COLORS.sw, '◆']];
+    return '<div class="donut-wrap"><canvas width="120" height="120" role="img" aria-label="購入者タイプ構成のドーナツグラフ"></canvas><ul class="legend-list">' +
+      items.map(it => '<li><span class="sw" style="background:' + it[2] + '">' + it[3] + '</span><span>' + it[0].slice(2) + '<span class="muted">　' + fmt.people(it[1]) + '</span></span><b>' + fmt.pct(div(it[1], res.buyers)) + '</b></li>').join('') +
+      '</ul></div>';
+  }
+  if (k === 'gender') {
+    const g = a.gender;
+    const seg = [['女性', g.f, 'var(--coral)'], ['男性', g.m, 'var(--navy-2)'], ['その他・不明', g.o, 'var(--muted)']];
+    return '<div class="stack" role="img" aria-label="性別構成">' + seg.map(s => '<span style="--w:' + (s[1] * 100).toFixed(1) + '%;background:' + s[2] + '">' + (s[1] > 0.12 ? s[0] : '') + '</span>').join('') + '</div>' +
+      '<div class="hbars">' + seg.map(s => hbar(s[0], s[1], s[2], fmt.pct(s[1], 0))).join('') + '</div>';
+  }
+  if (k === 'age') {
+    const labs = ['20代', '30代', '40代', '50代以上'];
+    const mx = Math.max.apply(null, a.age.concat([0.01]));
+    return '<div class="vbars">' + a.age.map((v, i) => '<div class="vbar"><span class="val">' + fmt.pct(v, 0) + '</span><span class="colw"><span class="fill" style="--h:' + (v / mx * 100).toFixed(1) + '%;' + (v === mx ? 'background:var(--coral)' : '') + '"></span></span><span class="lab">' + labs[i] + '</span></div>').join('') + '</div>';
+  }
+  if (k === 'behavior') {
+    return '<div class="hbars">' + hbar('平日夕方の駅前利用', a.station, 'var(--mint-ink)') + hbar('ドラッグストア月2回以上', a.drug, 'var(--navy-2)') + '</div>' +
+      '<p class="note">DOOH接触のある購入者が多いほど「駅前利用」、店内サイネージ接触のある購入者が多いほど「月2回以上」の比率が高まります。</p>';
+  }
+  if (k === 'interest') {
+    return '<div class="hbars">' + hbar('ヘアケア関心層', a.hair, 'var(--mint-ink)') + hbar('美容・ファッション関心層', a.beauty, 'var(--coral)') + '</div>' +
+      '<p class="note">購入者のうち各関心を持つ人の比率（重複あり）。</p>';
+  }
+  if (k === 'path') {
+    const bp = bestPattern(res);
+    const maxB = Math.max.apply(null, res.patterns.map(p => p.buyers).concat([1]));
+    return '<div class="path-table-wrap"><table class="data"><thead><tr><th scope="col">接触パターン</th><th scope="col">推定接触者数</th><th scope="col">来店者数</th><th scope="col">購入者数</th><th scope="col">来店率</th><th scope="col">購入率</th><th scope="col">新規購入率</th><th scope="col">再購入率</th></tr></thead><tbody>' +
+      res.patterns.map(p => '<tr class="' + (bp && bp.key === p.key ? 'best' : '') + '"><td class="path">' + (bp && bp.key === p.key ? '★ ' : '') + esc(p.label) + '</td>' +
+        '<td>' + (p.key === 'none' ? '—' : fmt.num(p.contacts)) + '</td>' +
+        '<td>' + fmt.num(p.visitors) + '</td>' +
+        '<td><span class="mini" style="width:' + Math.round(div(p.buyers, maxB) * 50) + 'px"></span>' + fmt.num(p.buyers) + '</td>' +
+        '<td>' + (p.key === 'none' ? '—' : (p.key === 'sig' ? '店内接触' : fmt.pct(p.visitRate, 2))) + '</td>' +
+        '<td>' + fmt.pct(p.buyRate) + '</td><td>' + fmt.pct(p.newRate) + '</td><td>' + fmt.pct(p.repRate) + '</td></tr>').join('') +
+      '</tbody></table></div><p class="note">★＝来店後の購入率が最も高い経路。店内サイネージを含む経路の推定接触者数は、店外広告接触者のうち来店時にサイネージ接触が見込まれる人数で按分しています。新規購入率はスイッチ候補を除く新規購入者の比率です。</p>';
+  }
+  if (k === 'repurchase') {
+    const rt = repurchaseByType(res);
+    return '<div class="big-stat"><span class="v num" data-count="' + res.repurchaseRate + '" data-fmt="pct">0%</span><span class="u">全体</span></div>' +
+      '<div class="hbars">' + hbar('● 新規購入', rt.new, TYPE_COLORS.new, fmt.pct(rt.new)) + hbar('■ リピート購入', rt.rep, TYPE_COLORS.rep, fmt.pct(rt.rep)) + hbar('◆ スイッチ候補', rt.sw, TYPE_COLORS.sw, fmt.pct(rt.sw)) + '</div>';
+  }
+  if (k === 'ltv') {
+    return '<div class="big-stat"><span class="v num" data-count="' + res.ltvPerBuyer + '" data-fmt="yen">¥0</span><span class="u">／人（12か月）</span></div>' +
+      '<div class="mini-cards"><div>想定LTV合計<b data-count="' + res.ltvTotal + '" data-fmt="yenL">0</b></div><div>再購入者<b>' + fmt.people(res.repurchasers) + '</b></div><div>LTV÷広告費<b>' + fmt.ratio(res.roas) + '倍</b></div></div>' +
+      '<p class="note">想定LTV＝単価' + fmt.yen(CONFIG.UNIT_PRICE) + ' ×（初回1回＋90日再購入率×その後の平均購入' + CONFIG.LTV_FUTURE_PURCHASES + '回）</p>';
+  }
+  return '';
+}
+function drawDonutAnimated(cv, parts, instant) {
+  const ctx = setupCanvas(cv); if (!ctx) return;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const tot = parts.reduce((a, p) => a + safe(p.v), 0) || 1;
+  const draw = (p) => {
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 4, r0 = R * 0.6;
+    ctx.fillStyle = '#efe9de'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.arc(cx, cy, r0, 0, Math.PI * 2, true); ctx.fill();
+    let a = -Math.PI / 2;
+    parts.forEach(pt => {
+      const sweep = safe(pt.v) / tot * Math.PI * 2 * p;
+      if (sweep <= 0) return;
+      ctx.fillStyle = pt.c; ctx.beginPath(); ctx.arc(cx, cy, R, a, a + sweep); ctx.arc(cx, cy, r0, a + sweep, a, true); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#fffdf9'; ctx.lineWidth = 2; ctx.stroke();
+      a += sweep;
+    });
+    ctx.fillStyle = '#132a4f'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '800 15px ' + getComputedStyle(document.body).fontFamily;
+    ctx.fillText(fmt.num(tot * p), cx, cy - 6);
+    ctx.font = '10px ' + getComputedStyle(document.body).fontFamily; ctx.fillStyle = '#5a6378';
+    ctx.fillText('購入者', cx, cy + 10);
+  };
+  if (instant) { draw(1); return; }
+  const t0 = performance.now();
+  const step = (now) => { if (!document.body.contains(cv)) return; const p = clamp((now - t0) / 900, 0, 1); draw(1 - Math.pow(1 - p, 3)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ---------- Next (hints / compare) ---------- */
+function cmpRows(a, b) {
+  const rows = [
+    ['来店者数', fmt.num(a.visitors), fmt.num(b.visitors), fmt.deltaRate(a.visitors, b.visitors)],
+    ['購入者数', fmt.num(a.buyers), fmt.num(b.buyers), fmt.deltaRate(a.buyers, b.buyers)],
+    ['新規購入率', fmt.pct(a.newRate), fmt.pct(b.newRate), fmt.deltaPt(a.newRate, b.newRate)],
+    ['スイッチ候補率', fmt.pct(a.swRate), fmt.pct(b.swRate), fmt.deltaPt(a.swRate, b.swRate)],
+    ['90日以内再購入率', fmt.pct(a.repurchaseRate), fmt.pct(b.repurchaseRate), fmt.deltaPt(a.repurchaseRate, b.repurchaseRate)],
+    ['想定LTV（合計）', fmt.yenLarge(a.ltvTotal), fmt.yenLarge(b.ltvTotal), fmt.deltaRate(a.ltvTotal, b.ltvTotal)]
+  ];
+  return rows.map(r => '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td><td><span class="delta ' + r[3].c + '">' + (r[3].c === 'up' ? '▲ ' : (r[3].c === 'down' ? '▼ ' : '')) + r[3].t + '</span></td></tr>').join('');
+}
+function cmpTable(a, b, la, lb) {
+  return '<div class="cmp-wrap"><table class="cmp"><thead><tr><th scope="col">指標</th><th scope="col">' + la + '</th><th scope="col">' + lb + '</th><th scope="col">変化</th></tr></thead><tbody>' + cmpRows(a, b) + '</tbody></table></div>';
+}
+function renderNext() {
+  const r = state.viewRound;
+  const res = state.results[r];
+  if (!res) { go('plan', r); return; }
+  if (r >= 3) { go('final', 3); return; }
+  const hints = nextHints(res);
+  let top = '';
+  if (r === 2) {
+    top = '<div class="question"><div><span class="q-k">QUESTION</span><p>誰に、どこで、何を伝えると、購入につながるのでしょうか？</p><span class="unlock">🔓 施策比較がアンロックされました</span></div></div>' +
+      '<div class="panel"><h3>施策比較：ROUND 1 → ROUND 2</h3><p class="small muted" style="margin:4px 0 10px">ROUND 1：' + msgName(state.results[1].plan.msg) + ' × ' + targetName(state.results[1].plan.target) + '　→　ROUND 2：' + msgName(res.plan.msg) + ' × ' + targetName(res.plan.target) + '</p>' +
+      cmpTable(state.results[1], res, 'ROUND 1', 'ROUND 2') + '</div>';
+  } else {
+    top = '<div class="question"><div><span class="q-k">INSIGHT</span><p>「何個売れたか」に加えて「誰が、どう買ったか」が見えてきました。</p><span class="unlock">この分析を、次の広告配信に反映しましょう</span></div></div>';
+  }
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('ROUND ' + r + ' ・ 次回施策', '分析結果を次の広告に生かす', '購入者分析から見えた傾向をもとに、ROUND ' + (r + 1) + 'の戦略を考えます。') +
+    top +
+    '<div class="two-col">' +
+      '<div class="panel"><h3>次回施策へのヒント</h3><div class="hint-list">' + hints.map((h, i) => '<div class="hint"><span class="hi" aria-hidden="true">' + (i + 1) + '</span><div><b>' + esc(h.t) + '</b><span>' + esc(h.d) + '</span></div></div>').join('') + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:14px">' +
+        doctorBlock([{ t: '分析結果に合ったターゲットとメッセージを選ぶと、成果が伸びやすくなります。' }, { t: '逆に、分析と合わない戦略では改善しないこともあります。データの傾向をよく見て選びましょう。', c: 'warn' }]) +
+        '<div class="panel"><h3>ROUND ' + r + 'のプラン</h3><div class="summary-line" style="margin-top:8px"><span class="chip navy">TVCM ' + fmt.man(res.plan.tv) + '</span><span class="chip mint">DOOH ' + fmt.man(res.plan.dooh) + '</span><span class="chip coral">店内サイネージ ' + fmt.man(res.plan.sig) + '</span><span class="chip">' + msgName(res.plan.msg) + '</span><span class="chip">' + targetName(res.plan.target) + '</span></div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="actions between no-print"><button class="btn btn-ghost" data-action="view-analysis" data-round="' + r + '">分析に戻る</button><button class="btn btn-accent btn-lg" data-action="next-round">ROUND ' + (r + 1) + 'へ進む</button></div>' +
+    '</section>';
+}
+
+/* ---------- Final ---------- */
+function ensureScore() { if (!state.score && state.results[3]) state.score = computeScore(state.results[3]); return state.score; }
+function scoreRingSvg(total) {
+  const R = 64, C = 2 * Math.PI * R;
+  const off = C * (1 - total / 100);
+  return '<svg class="score-ring" viewBox="0 0 150 150" role="img" aria-label="スコア ' + total + '点"><circle cx="75" cy="75" r="' + R + '" fill="none" stroke="#efe9de" stroke-width="12"/>' +
+    '<circle id="ringArc" cx="75" cy="75" r="' + R + '" fill="none" stroke="#c8952a" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + (reduceMotion ? off : C).toFixed(1) + '" transform="rotate(-90 75 75)" style="transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)" data-off="' + off.toFixed(1) + '"/>' +
+    '<text x="75" y="76" text-anchor="middle" font-size="40" font-weight="800" fill="#132a4f" font-family="Avenir Next,Segoe UI,Arial,sans-serif" id="ringText">' + (reduceMotion ? total : 0) + '</text><text x="75" y="100" text-anchor="middle" font-size="12" fill="#5a6378">/ 100点</text></svg>';
+}
+function renderFinal() {
+  const r1 = state.results[1], r3 = state.results[3];
+  if (!r1 || !r3) { go('plan', state.round); return; }
+  const sc = ensureScore();
+  stage.innerHTML =
+    '<section class="screen">' +
+    screenHead('FINAL RESULT', '施策前後の比較とスコア', 'ROUND 1の戦略と、分析を踏まえたROUND 3の戦略を比べます。') +
+    '<div class="final-grid">' +
+      '<div class="panel"><h3>ROUND 1 と ROUND 3 の比較</h3>' +
+        '<p class="small muted" style="margin:4px 0 10px">ROUND 1：' + msgName(r1.plan.msg) + ' × ' + targetName(r1.plan.target) + '（TV ' + r1.plan.tv + ' / DOOH ' + r1.plan.dooh + ' / サイネージ ' + r1.plan.sig + '万円）<br>ROUND 3：' + msgName(r3.plan.msg) + ' × ' + targetName(r3.plan.target) + '（TV ' + r3.plan.tv + ' / DOOH ' + r3.plan.dooh + ' / サイネージ ' + r3.plan.sig + '万円）</p>' +
+        cmpTable(r1, r3, 'ROUND 1', 'ROUND 3') + '</div>' +
+      '<div class="panel" id="scorePanel"><h3>最終スコア</h3>' +
+        '<div class="score-hero" style="margin-top:10px">' + scoreRingSvg(sc.total) + '<div class="score-title"><span class="eyebrow">称号</span><span class="rank">' + sc.title + '</span><span class="small muted">ROUND 3の成果で評価</span></div></div>' +
+        '<div class="score-items">' + sc.items.map(i => '<div class="score-item"><span>' + i.label + '</span><span class="track"><span class="fill" style="--w:' + (i.ratio * 100).toFixed(1) + '%"></span></span><span class="pt">' + i.pt + ' / ' + i.max + '</span></div>').join('') + '</div>' +
+      '</div>' +
+    '</div>' +
+    doctorBlock(finalReview(r1, r3, sc).map(t => ({ t: t }))) +
+    '<div class="actions between no-print"><button class="btn btn-ghost" data-action="view-analysis" data-round="3">ROUND 3の分析に戻る</button><button class="btn btn-accent btn-lg" data-action="ending">エンディングへ</button></div>' +
+    '</section>';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const p = $('#scorePanel'); if (p) p.classList.add('go');
+    const arc = $('#ringArc'); if (arc) arc.setAttribute('stroke-dashoffset', arc.getAttribute('data-off'));
+    const tx = $('#ringText'); if (tx) countUp(tx, sc.total, (v) => String(Math.round(v)), 1200);
+  }));
+}
+
+/* ---------- Ending ---------- */
+function renderEnding() {
+  const flow = ['広告接触を計測する', '来店と購買を確かめる', '購入者を深く知る', '次の広告を改善する', '再購入とLTV向上につなげる'];
+  stage.innerHTML =
+    '<section class="screen"><div class="ending">' +
+      '<h2>広告は、売れた瞬間で終わらない。</h2>' +
+      '<ol class="flow" aria-label="リテールメディアの流れ">' + flow.map((t, i) => '<li style="animation-delay:' + (0.9 + i * 0.45) + 's"><span class="step"><span class="k">STEP ' + (i + 1) + '</span>' + t + '</span>' + (i < flow.length - 1 ? '<span class="arr" aria-hidden="true">→</span>' : '') + '</li>').join('') + '</ol>' +
+      '<p class="closing">リテールメディアは、広告接触から購買、その先の顧客関係までをデータでつなぎ、広告の勝ちパターンを磨いていきます。</p>' +
+      '<div class="actions"><button class="btn btn-mint btn-lg" data-action="report">結果レポートを見る</button><button class="btn btn-lg" data-action="restart">もう一度プレイする</button></div>' +
+    '</div></section>';
+}
+
+/* ---------- Report ---------- */
+function renderReport() {
+  const R = [1, 2, 3].map(i => state.results[i]);
+  if (R.some(x => !x)) { go('plan', state.round); return; }
+  const r1 = R[0], r3 = R[2];
+  const sc = ensureScore();
+  const bp = bestPattern(r3);
+  const a = r3.attrs;
+  const ageLabs = ['20代', '30代', '40代', '50代以上'];
+  const topAge = a.age.indexOf(Math.max.apply(null, a.age));
+  const rowsDef = [
+    ['TVCM 予算', x => fmt.man(x.plan.tv)], ['DOOH 予算', x => fmt.man(x.plan.dooh)], ['店内サイネージ 予算', x => fmt.man(x.plan.sig)],
+    ['ターゲット', x => targetName(x.plan.target)], ['広告メッセージ', x => msgName(x.plan.msg)],
+    ['広告接触者数', x => fmt.num(x.contacts)], ['来店者数', x => fmt.num(x.visitors)], ['店内サイネージ接触者数', x => fmt.num(x.sigContacts)],
+    ['購入者数', x => fmt.num(x.buyers)],
+    ['新規／リピート／スイッチ候補', x => fmt.pct(x.newRate, 0) + ' / ' + fmt.pct(x.repShare, 0) + ' / ' + fmt.pct(x.swRate, 0)],
+    ['90日以内の想定再購入率', x => fmt.pct(x.repurchaseRate)], ['想定LTV（1人）', x => fmt.yen(x.ltvPerBuyer)], ['想定LTV（合計）', x => fmt.yenLarge(x.ltvTotal)]
+  ];
+  stage.innerHTML =
+    '<section class="screen report">' +
+      '<div class="report-head"><div><p class="eyebrow">RETAIL MEDIA QUEST ・ RESULT REPORT</p><h2>MINTÉ 広告施策 結果レポート</h2></div>' +
+        '<div class="score-title" style="text-align:right"><span class="small muted">最終スコア</span><span class="rank num">' + sc.total + '点 ・ ' + sc.title + '</span></div></div>' +
+      '<div class="report-grid">' +
+        '<div class="panel"><span class="section-t">ラウンド別の施策と成果</span><div class="cmp-wrap"><table class="cmp"><thead><tr><th scope="col">項目</th><th scope="col">ROUND 1</th><th scope="col">ROUND 2</th><th scope="col">ROUND 3</th></tr></thead><tbody>' +
+          rowsDef.map(d => '<tr><td>' + d[0] + '</td>' + R.map(x => '<td class="num">' + d[1](x) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table></div></div>' +
+        '<div style="display:flex;flex-direction:column;gap:14px">' +
+          '<div class="panel"><span class="section-t">ROUND 3 購入者の主要属性</span><ul class="plain">' +
+            '<li>女性 ' + fmt.pct(a.gender.f, 0) + ' ／ 男性 ' + fmt.pct(a.gender.m, 0) + ' ／ その他・不明 ' + fmt.pct(a.gender.o, 0) + '</li>' +
+            '<li>最多年代：' + ageLabs[topAge] + '（' + fmt.pct(a.age[topAge], 0) + '）</li>' +
+            '<li>平日夕方の駅前利用 ' + fmt.pct(a.station, 0) + ' ／ ドラッグストア月2回以上 ' + fmt.pct(a.drug, 0) + '</li>' +
+            '<li>ヘアケア関心層 ' + fmt.pct(a.hair, 0) + ' ／ 美容・ファッション関心層 ' + fmt.pct(a.beauty, 0) + '</li>' +
+            '<li>購入者の中心セグメント：' + topSegment(r3).name + '</li></ul></div>' +
+          '<div class="panel"><span class="section-t">有効だった接触経路（ROUND 3）</span><p style="font-size:13px">' + (bp ? '★ ' + esc(bp.label) + '：購入率 ' + fmt.pct(bp.buyRate) + '、再購入率 ' + fmt.pct(bp.repRate) : 'データ不足') + '</p></div>' +
+          '<div class="panel"><span class="section-t">リテール博士の総評</span><ul class="plain">' + finalReview(r1, r3, sc).map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
+          '<div class="panel"><span class="section-t">次に試すべき施策</span><ul class="plain">' + nextActions(sc, r3).map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="disclaimer"><span>本ゲームの数値・分析結果は、リテールメディアの仕組みを理解するためのシミュレーションです。広告接触は、放映ログ、視聴データ、位置情報、店内滞在情報などから推定します。購買は、連携可能な会員ID付き購買データなどによって確認します。</span><span>属性・行動・興味関心の分析は、本人同意のもとで連携可能なデータの範囲で行う想定です。ブランドスイッチは、同一カテゴリーの過去購買履歴に基づく候補判定です。</span></div>' +
+      '<div class="actions between no-print"><button class="btn btn-ghost" data-action="ending">エンディングに戻る</button>' +
+        '<div class="actions"><span class="print-note" id="printNote">Claudeのプレビュー画面では印刷できない場合があります。その場合はHTMLファイルをブラウザで開いてください。</span><button class="btn btn-primary" data-action="print">レポートを印刷</button><button class="btn" data-action="restart">もう一度プレイする</button></div></div>' +
+    '</section>';
+}
+
+/* =====================================================================
+   9. イベント処理
+   ===================================================================== */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+  const act = el.getAttribute('data-action');
+  const rd = Number(el.getAttribute('data-round')) || state.viewRound;
+  switch (act) {
+    case 'tut-next': state.tutorial = clamp(state.tutorial + 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-next"],[data-action="start"]'); break;
+    case 'tut-prev': state.tutorial = clamp(state.tutorial - 1, 0, 2); renderIntro(); focusFirst('[data-action="tut-prev"]:not([disabled]),[data-action="tut-next"]'); break;
+    case 'start': go('plan', 1); break;
+    case 'equal': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { p.tv = 340; p.dooh = 330; p.sig = 330; updatePlanReadouts(); } break; }
+    case 'reset-budget': { const p = state.plans[state.viewRound]; if (p && !state.results[state.viewRound]) { const d = defaultPlan(); p.tv = d.tv; p.dooh = d.dooh; p.sig = d.sig; updatePlanReadouts(); } break; }
+    case 'deliver': el.disabled = true; deliver(); break;
+    case 'skip-anim': if (anim.finish) anim.finish(); break;
+    case 'analyze': go('analysis', state.viewRound); break;
+    case 'reveal-all': if (anim.revealAll) anim.revealAll(); break;
+    case 'to-next': if (state.viewRound >= 3) go('final', 3); else go('next', state.viewRound); break;
+    case 'next-round': if (!state.busy) { if (state.round === state.viewRound) nextRound(); else go('plan', state.round); } break;
+    case 'view-analysis': go('analysis', rd); break;
+    case 'view-run': go('run', rd); break;
+    case 'back-plan': go(state.results[state.round] ? 'run' : 'plan', state.round); break;
+    case 'ending': go('ending', 3); break;
+    case 'report': go('report', 3); break;
+    case 'print': try { window.print(); } catch (err) { const n = $('#printNote'); if (n) n.textContent = '印刷を開始できませんでした。HTMLファイルをブラウザで開いてお試しください。'; } break;
+    case 'restart': restart(); break;
+  }
+});
+function focusFirst(sel) { const b = $(sel, stage); if (b) try { b.focus(); } catch (e) { /* noop */ } }
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t && t.matches('input[type=range][data-media]')) {
+    if (state.results[state.viewRound]) return;
+    setBudget(t.getAttribute('data-media'), Number(t.value));
+    updatePlanReadouts();
+  }
+});
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (!t || t.type !== 'radio') return;
+  const p = state.plans[state.viewRound];
+  if (!p || state.results[state.viewRound]) return;
+  if (t.name === 'msg') p.msg = t.value;
+  if (t.name === 'target') p.target = t.value;
+  updatePlanReadouts();
+  renderTopbar();
+});
+let resizeT = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    if (state.screen === 'run' && !state.busy) {
+      const res = state.results[state.viewRound];
+      if (res) runFunnel(res, state.viewRound === 1 && !state.analyzed[1], stageValues(res), true, () => {});
+    }
+  }, 200);
+});
+
+render();
+</script>
+</body>
+</html>
