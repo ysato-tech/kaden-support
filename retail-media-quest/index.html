@@ -49,43 +49,52 @@ p{margin:0}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
 h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
 
-/* ---------- Top bar ---------- */
+/* ---------- Top bar（1行・最小限の高さ） ---------- */
 .topbar{
   position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
   background:var(--navy);color:#fff;
   padding-left:max(16px,env(safe-area-inset-left,0px));
   padding-right:max(16px,env(safe-area-inset-right,0px));
-  padding-block:10px;
+  padding-block:5px;
 }
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--navy)}
-.topbar-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--mint);position:relative;flex:none}
-.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--navy);border-radius:2px}
-.brand-mark::before{left:7px;bottom:7px;width:4px;height:9px}
-.brand-mark::after{left:13px;bottom:7px;width:4px;height:15px;box-shadow:6px 4px 0 0 var(--navy)}
-.brand strong{display:block;font-family:var(--font-num);font-size:15px;letter-spacing:.14em;font-weight:700}
-.brand span{display:block;font-size:11px;opacity:.78;letter-spacing:.04em}
-.rounds{display:flex;gap:6px;margin-left:auto}
-.sound-ctrl{display:flex;gap:6px}
-.snd{appearance:none;cursor:pointer;font-size:11px;letter-spacing:.04em;padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:transparent;color:rgba(255,255,255,.75);min-height:26px;white-space:nowrap;transition:background .15s,color .15s}
-.snd b{font-family:var(--font-num);margin-left:2px}
-.sound-ctrl{align-items:center;flex-wrap:wrap}
-.snd-hint{font-size:11px;color:var(--mint);white-space:nowrap}
+.topbar-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;min-height:26px}
+.brand{display:flex;align-items:center;gap:7px;min-width:0}
+.brand-mark{width:18px;height:18px;border-radius:5px;background:var(--mint);position:relative;flex:none}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:var(--navy);border-radius:1px}
+.brand-mark::before{left:4px;bottom:4px;width:2px;height:5px}
+.brand-mark::after{left:8px;bottom:4px;width:2px;height:9px;box-shadow:4px 3px 0 0 var(--navy)}
+.brand strong{font-family:var(--font-num);font-size:11px;letter-spacing:.12em;font-weight:700;white-space:nowrap}
+.rounds{display:flex;gap:4px}
+.round-pill{font-family:var(--font-num);font-size:10px;letter-spacing:.06em;padding:0 7px;line-height:18px;border-radius:99px;border:1px solid rgba(255,255,255,.28);color:rgba(255,255,255,.7);white-space:nowrap}
+.round-pill.is-current{background:var(--mint);border-color:var(--mint);color:var(--navy);font-weight:700}
+.round-pill.is-done{color:#fff;border-color:rgba(255,255,255,.6)}
+.round-pill.is-done::before{content:"✓"}
+.prog-wrap{display:flex;align-items:center;gap:8px;flex:1 1 160px;min-width:0}
+.progress{list-style:none;margin:0;padding:0;display:flex;gap:3px;flex:0 1 150px;min-width:70px}
+.progress li{flex:1 1 0;height:4px;border-radius:2px;background:rgba(255,255,255,.18)}
+.progress li.is-done{background:var(--mint)}
+.progress li.is-current{background:#fff}
+.prog-label{font-size:11px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.top-actions{display:flex;align-items:center;gap:4px;margin-left:auto}
+.sound-ctrl{display:flex;gap:4px;align-items:center}
+.snd{appearance:none;cursor:pointer;font-size:10px;letter-spacing:.03em;padding:0 7px;line-height:18px;border-radius:5px;border:1px solid rgba(255,255,255,.35);background:transparent;color:rgba(255,255,255,.75);white-space:nowrap;transition:background .15s,color .15s}
+.snd b{font-family:var(--font-num);margin-left:1px}
+.snd-hint{font-size:10px;color:var(--mint);white-space:nowrap}
 .snd:hover{background:rgba(255,255,255,.1)}
 .snd:active{transform:translateY(1px)}
 .snd[aria-pressed="true"]{border-color:var(--mint);color:#fff}
 .snd[aria-pressed="true"] b{color:var(--mint)}
 .snd[aria-pressed="false"] b{color:rgba(255,255,255,.55)}
-.round-pill{font-family:var(--font-num);font-size:11px;letter-spacing:.1em;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.28);color:rgba(255,255,255,.7);white-space:nowrap}
-.round-pill.is-current{background:var(--mint);border-color:var(--mint);color:var(--navy);font-weight:700}
-.round-pill.is-done{color:#fff;border-color:rgba(255,255,255,.6)}
-.round-pill.is-done::before{content:"✓ "}
-.progress{list-style:none;margin:0;padding:0;display:flex;gap:4px;flex-wrap:wrap;width:100%}
-.progress li{flex:1 1 0;min-width:70px;font-size:11px;padding:4px 6px 0;border-top:3px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.progress li.is-done{border-top-color:var(--mint);color:rgba(255,255,255,.85)}
-.progress li.is-current{border-top-color:#fff;color:#fff;font-weight:700}
-.progress li .n{font-family:var(--font-num);margin-right:4px;opacity:.8}
+@media (max-width:760px){
+  .brand strong{display:none}
+  .rank-btn .lbl{display:none}
+  .snd-hint{display:none}
+  .prog-wrap{flex-basis:60px}
+  .progress{min-width:48px}
+  .topbar-inner{gap:6px 8px;flex-wrap:nowrap}
+}
+@media (max-width:480px){.prog-label{display:none}}
 
 /* ---------- Stage ---------- */
 .stage-wrap{
@@ -245,8 +254,6 @@ input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--navy);height:
 .px-star.s1{top:40%;right:-18px;background:#2bb39b;animation-delay:-.4s}
 .px-star.s2{bottom:-6px;left:35%;background:#ee6a4d;animation-delay:-.8s}
 @keyframes twinkle{0%{opacity:1}33%{opacity:0}66%{opacity:.6}}
-.top-icons{display:flex;gap:8px;align-items:center;padding-left:6px}
-@media (max-width:900px){.top-icons{display:none}}
 @media (max-width:760px){.px-cluster{grid-template-columns:repeat(6,auto);gap:10px}.px-lg{width:36px;height:36px}}
 
 /* ---------- Funnel ---------- */
@@ -469,9 +476,6 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
   .stage-labels div{font-size:10px}
   .stage-counters .r{display:none}
   .score-item{grid-template-columns:110px 1fr 56px}
-  .rounds{margin-left:0}
-  .progress li{min-width:44px;font-size:10px}
-  .progress li .t{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}
@@ -495,14 +499,14 @@ table.cmp th:first-child,table.cmp td:first-child{text-align:left;color:var(--na
 <body>
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <div><strong>RETAIL MEDIA QUEST</strong><span>広告接触を、購買とLTVにつなげよう</span></div>
-      <div class="top-icons" id="topIcons" aria-hidden="true"></div>
-    </div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>RETAIL MEDIA QUEST</strong></div>
     <div class="rounds" id="roundPills" aria-label="ラウンド進行"></div>
-    <button type="button" class="snd rank-btn" data-action="ranking">🏆 ランキング</button><div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">♪ BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button><span class="snd-hint" id="sndHint">🔈 画面をクリックすると音が出ます</span></div>
-    <ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol>
+    <div class="prog-wrap"><ol class="progress" id="progress" aria-label="このラウンドの進行状況"></ol><span class="prog-label" id="progLabel"></span></div>
+    <div class="top-actions">
+      <span class="snd-hint" id="sndHint">🔈クリックで音が出ます</span>
+      <button type="button" class="snd rank-btn" data-action="ranking" title="ランキング">🏆<span class="lbl"> ランキング</span></button>
+      <div class="sound-ctrl" role="group" aria-label="サウンド設定"><button type="button" class="snd" id="snd-bgm" data-action="toggle-bgm" aria-pressed="true">BGM <b>ON</b></button><button type="button" class="snd" id="snd-sfx" data-action="toggle-sfx" aria-pressed="true">効果音 <b>ON</b></button></div>
+    </div>
   </div>
 </header>
 
@@ -1133,7 +1137,7 @@ function renderTopbar() {
     let cls = 'round-pill';
     if (endScreens.includes(s) || state.results[i] && state.analyzed[i] && i < state.round) cls += ' is-done';
     if (!endScreens.includes(s) && s !== 'intro' && s !== 'ranking' && i === r) cls += ' is-current';
-    return '<span class="' + cls + '">ROUND ' + i + '</span>';
+    return '<span class="' + cls + '" title="ROUND ' + i + '">R' + i + '</span>';
   }).join('') + (endScreens.includes(s) ? '<span class="round-pill is-current">RESULT</span>' : '');
   let cur = -1, done = -1;
   const plan = state.plans[r];
@@ -1145,8 +1149,10 @@ function renderTopbar() {
   if (s === 'intro' || s === 'ranking') { done = -1; cur = -1; }
   $('#progress').innerHTML = STEPS.map((t, i) => {
     const cls = i <= done ? 'is-done' : (i === cur ? 'is-current' : '');
-    return '<li class="' + cls + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="n">' + (i + 1) + '</span><span class="t">' + t + '</span></li>';
+    return '<li class="' + cls + '" title="' + (i + 1) + '. ' + t + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="sr-only">' + (i + 1) + '. ' + t + (i <= done ? '（完了）' : '') + '</span></li>';
   }).join('');
+  const lbl = $('#progLabel');
+  if (lbl) lbl.textContent = cur >= 0 ? (cur + 1) + '/' + STEPS.length + ' ' + STEPS[cur] : (endScreens.includes(s) ? '結果' : (s === 'ranking' ? 'ランキング' : 'スタート'));
 }
 
 function doctorSvg() {
@@ -2100,7 +2106,7 @@ const Sound = (() => {
     renderButtons();
   }
   function renderButtons() {
-    [['bgm', '♪ BGM'], ['sfx', '効果音']].forEach(([k, label]) => {
+    [['bgm', 'BGM'], ['sfx', '効果音']].forEach(([k, label]) => {
       const b = document.getElementById('snd-' + k); if (!b) return;
       b.setAttribute('aria-pressed', prefs[k] ? 'true' : 'false');
       b.innerHTML = label + ' <b>' + (prefs[k] ? 'ON' : 'OFF') + '</b>';
@@ -2371,7 +2377,6 @@ window.addEventListener('resize', () => {
 
 Sound.renderButtons();
 initRanking();
-{ const ti = document.getElementById('topIcons'); if (ti) ti.innerHTML = pixelIcons('px-sm'); }
 render();
 </script>
 </body>
