@@ -2121,35 +2121,7 @@ const Sound = (() => {
     let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i])); return m;
   }
   function state() { return ctx ? ctx.state : 'none'; }
-  /* 声（ブラウザの音声読み上げ機能）。日本語の声がない環境では効果音だけ鳴らす */
-  let jaVoice = null;
-  const pickVoice = () => {
-    try {
-      const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-      jaVoice = vs.find(v => /^ja/i.test(v.lang) && /female|kyoko|haruka|nanami|ayumi|mizuki|google/i.test(v.name)) || vs.find(v => /^ja/i.test(v.lang)) || null;
-    } catch (e) { jaVoice = null; }
-  };
-  try { if (window.speechSynthesis) { pickVoice(); window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } } catch (e) { /* noop */ }
-  const VOICES = {
-    yay: { text: 'イエーイ！', pitch: 1.9, rate: 1.25 },
-    aww: { text: 'あーあ…', pitch: 0.4, rate: 0.55 }
-  };
-  function voice(kind) {
-    if (!prefs.sfx || !VOICES[kind]) return;
-    unlock();
-    sfx(kind);
-    try {
-      const sp = window.speechSynthesis;
-      if (!sp || typeof SpeechSynthesisUtterance === 'undefined') return;
-      if (!jaVoice) pickVoice();
-      if (!jaVoice) return;                      // 日本語の声がなければ読み上げない（変な発音を避ける）
-      sp.cancel();
-      const v = VOICES[kind], u = new SpeechSynthesisUtterance(v.text);
-      u.voice = jaVoice; u.lang = jaVoice.lang; u.pitch = v.pitch; u.rate = v.rate; u.volume = 1;
-      setTimeout(() => { try { sp.speak(u); } catch (e) { /* noop */ } }, kind === 'yay' ? 120 : 0);
-    } catch (e) { /* 読み上げできなくてもゲームは続ける */ }
-  }
-  return { voice: voice, scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
+  return { scene: scene, sfx: sfx, toggle: toggle, renderButtons: renderButtons, songs: SONGS, compile: compile, level: level, state: state };
 })();
 const SCREEN_MUSIC = { ranking: 'title', intro: 'title', plan: 'main', run: 'run', analysis: 'analysis', next: 'main', final: 'title', ending: 'ending', report: 'ending' };
 
@@ -2340,7 +2312,7 @@ document.addEventListener('click', (e) => {
   }
 });
 function focusFirst(sel) { const b = $(sel, stage); if (b) try { b.focus(); } catch (e) { /* noop */ } }
-/* 店内サイネージのスライダーで予算を上げたら「イエーイ！」、下げたら「あーあ…」。
+/* 店内サイネージのスライダーで予算を上げたら上昇音と「イエーイ！」の吹き出し、下げたら下降音と「あーあ…」の吹き出し（音声読み上げはしない）。
    スライダーを動かしている間はまとめて、手を止めた時点の増減で1回だけ反応する */
 const sigWatch = { base: null, timer: 0 };
 function watchSignage(before) {
@@ -2351,8 +2323,8 @@ function watchSignage(before) {
     const base = sigWatch.base; sigWatch.base = null;
     if (!p || state.screen !== 'plan' || base === null) return;
     const d = p.sig - base;
-    if (d > 0) { Sound.voice('yay'); sigBubble('yay', d); }
-    else if (d < 0) { Sound.voice('aww'); sigBubble('aww', d); }
+    if (d > 0) { Sound.sfx('yay'); sigBubble('yay', d); }
+    else if (d < 0) { Sound.sfx('aww'); sigBubble('aww', d); }
   }, 450);
 }
 function sigBubble(kind, d) {
